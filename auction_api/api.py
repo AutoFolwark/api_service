@@ -16,20 +16,20 @@ from request_schemas.lot import LotByIDIn, LotByVINIn, CurrentBidOut, GetAverage
 
 class Endpoint(str, Enum):
     # current
-    LOT_BY_ID_CURRENT = 'cars/{lot_id}/'
-    LOTS_CURRENT = 'cars/'
+    LOT_BY_ID_CURRENT = 'cars/{lot_id}'
+    LOTS_CURRENT = 'cars'
 
     # all time
-    LOT_BY_VIN_FOR_ALL_TIME = 'cars/vin/all/'
-    LOT_BY_ID_FOR_ALL_TIME = 'cars/lot-id/all/'
+    LOT_BY_VIN_FOR_ALL_TIME = 'cars/vin/all'
+    LOT_BY_ID_FOR_ALL_TIME = 'cars/lot-id/all'
 
     # for lot
-    CURRENT_BID_BY_ID = 'cars/current-bid/'
+    CURRENT_BID_BY_ID = 'cars/current-bid'
 
     # history
-    HISTORY_LOTS = 'history-cars/'
-    HISTORY_BY_ID = 'sale-histories/lot-id/'
-    HISTORY_BY_VIN = 'sale-histories/vin/'
+    HISTORY_LOTS = 'history-cars'
+    HISTORY_BY_ID = 'sale-histories/lot-id'
+    HISTORY_BY_VIN = 'sale-histories/vin'
 
     #average price
     AVERAGE_PRICE = 'history-cars/statistic'
