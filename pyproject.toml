@@ -1,5 +1,5 @@
 [project]
-name = "vinas-external-api-app"
+name = "external-api-app"
 version = "0.1.0"
 description = ""
 authors = [
@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "vinas_external_api_app", from = "src"}]
+packages = [{include = "external_api_app", from = "src"}]
 
 
 [tool.poetry.group.dev.dependencies]
