@@ -147,6 +147,6 @@ jobs:
           script: |
             set -x
             docker pull ${{ env.IMAGE_NAME }}:main
-            cd /srv/vinaslt/deploy_conf
+            cd /srv/autofolwark/deploy_conf
             docker compose up -d --build
             echo "Deployment complete"
