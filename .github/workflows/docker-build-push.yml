@@ -12,7 +12,7 @@ env:
   # docker compose service name(s) in compose files (pull/up); may differ from IMAGE_REPO.
   # One image can back several containers: list multiple names separated by commas (optional spaces).
   # Example: auth_service or auth_api,auth_worker
-  SERVICE_NAME: api_service, api_rpc_service
+  SERVICE_NAME: api_service, api_rpc_service, api_init_db
   IMAGE_TAG: ${{ github.ref_name == 'main' && 'main' || 'dev' }}
   CACHE_SCOPE: ${{ github.ref_name }}
 
