@@ -31,8 +31,13 @@ class Endpoint(str, Enum):
     HISTORY_BY_ID = 'sale-histories/lot-id'
     HISTORY_BY_VIN = 'sale-histories/vin'
 
-    #average price
+    # average price
     AVERAGE_PRICE = 'history-cars/statistic'
+
+    # db seo
+    DB_UPDATE_CURRENT = 'db/cars/update'
+    DB_DELETE_CURRENT = 'db/cars/deleted'
+    DB_UPDATE_HISTORY = 'db/history-cars/updbd'
 
 class EndpointSchema(BaseModel):
     validation_schema: type[BaseModel]
