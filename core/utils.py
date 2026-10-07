@@ -1,8 +1,41 @@
 import json
 import os
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+SPECIAL_MAPPING = {
+    "DB_NAME": "API_DB_NAME",
+    "DB_PASS": "API_DB_PASS",
+    "DB_USER": "API_DB_USER",
+}
+
+
+def _get_ec2_region() -> str | None:
+    token_request = Request(
+        "http://169.254.169.254/latest/api/token",
+        method="PUT",
+        headers={"X-aws-ec2-metadata-token-ttl-seconds": "60"},
+    )
+    try:
+        with urlopen(token_request, timeout=1) as response:
+            token = response.read().decode()
+
+        identity_request = Request(
+            "http://169.254.169.254/latest/dynamic/instance-identity/document",
+            headers={"X-aws-ec2-metadata-token": token},
+        )
+        with urlopen(identity_request, timeout=1) as response:
+            identity = json.loads(response.read())
+        if isinstance(identity, dict) and isinstance(identity.get("instanceId"), str):
+            region = identity.get("region")
+            if isinstance(region, str):
+                return region
+    except (OSError, URLError, ValueError):
+        pass
+    return None
 
 
 def load_secrets():
@@ -11,9 +44,11 @@ def load_secrets():
     import boto3
     from infisical_sdk import InfisicalSDKClient
 
+    ec2_region = _get_ec2_region()
     is_aws = (
             "AWS_LAMBDA_FUNCTION_NAME" in os.environ
             or "AWS_EXECUTION_ENV" in os.environ
+            or ec2_region is not None
     )
 
     def is_in_docker():
@@ -22,7 +57,10 @@ def load_secrets():
     if is_aws:
         logger.info("Loading secrets from AWS Secrets Manager")
         try:
-            secrets_client = boto3.client('secretsmanager')
+            secrets_client = boto3.client(
+                "secretsmanager",
+                **({"region_name": ec2_region} if ec2_region else {}),
+            )
             response = secrets_client.get_secret_value(SecretId="prod")
             secrets_dict = json.loads(response['SecretString'])
 
@@ -59,7 +97,11 @@ def load_secrets():
                 secret_path="/"
             )
             for s in infisical_secrets.secrets:
-                os.environ[s.secretKey] = str(s.secretValue)
+                secret_value = str(s.secretValue)
+                os.environ[s.secretKey] = secret_value
+                mapped_key = SPECIAL_MAPPING.get(s.secretKey)
+                if mapped_key:
+                    os.environ[mapped_key] = secret_value
         except Exception as e:
             logger.opt(exception=e).warning(f"Error fetching secrets from Infisical: {type(e).__name__}: {e!r}")
     else:
