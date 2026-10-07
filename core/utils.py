@@ -1,8 +1,6 @@
 import json
 import os
 from pathlib import Path
-from urllib.error import URLError
-from urllib.request import Request, urlopen
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -13,42 +11,18 @@ SPECIAL_MAPPING = {
 }
 
 
-def _get_ec2_region() -> str | None:
-    token_request = Request(
-        "http://169.254.169.254/latest/api/token",
-        method="PUT",
-        headers={"X-aws-ec2-metadata-token-ttl-seconds": "60"},
-    )
-    try:
-        with urlopen(token_request, timeout=1) as response:
-            token = response.read().decode()
-
-        identity_request = Request(
-            "http://169.254.169.254/latest/dynamic/instance-identity/document",
-            headers={"X-aws-ec2-metadata-token": token},
-        )
-        with urlopen(identity_request, timeout=1) as response:
-            identity = json.loads(response.read())
-        if isinstance(identity, dict) and isinstance(identity.get("instanceId"), str):
-            region = identity.get("region")
-            if isinstance(region, str):
-                return region
-    except (OSError, URLError, ValueError):
-        pass
-    return None
-
-
 def load_secrets():
     # core.logger depends on config.settings, which isn't built until after this runs
     from loguru import logger
     import boto3
     from infisical_sdk import InfisicalSDKClient
 
-    ec2_region = _get_ec2_region()
+    aws_session = boto3.Session()
+    aws_credentials = aws_session.get_credentials()
     is_aws = (
             "AWS_LAMBDA_FUNCTION_NAME" in os.environ
             or "AWS_EXECUTION_ENV" in os.environ
-            or ec2_region is not None
+            or aws_credentials is not None
     )
 
     def is_in_docker():
@@ -57,9 +31,9 @@ def load_secrets():
     if is_aws:
         logger.info("Loading secrets from AWS Secrets Manager")
         try:
-            secrets_client = boto3.client(
+            secrets_client = aws_session.client(
                 "secretsmanager",
-                **({"region_name": ec2_region} if ec2_region else {}),
+                **({"region_name": aws_session.region_name} if aws_session.region_name else {}),
             )
             response = secrets_client.get_secret_value(SecretId="prod")
             secrets_dict = json.loads(response['SecretString'])
