@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, HttpUrl
 
 
-class DBLot(BaseModel):
+class DBUpdateLot(BaseModel):
     id: Optional[str] = None
     lot_id: Optional[int] = None
     site: Optional[int] = None
@@ -82,3 +82,11 @@ class DBLot(BaseModel):
     copart_yard_name: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class DBDeleteLot(BaseModel):
+    id: str
+    lot_id: int
+    site: int
+    created_at: datetime
+    updated_at: datetime
