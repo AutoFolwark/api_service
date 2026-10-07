@@ -1,17 +1,23 @@
 from enum import Enum
 
 from dotenv import load_dotenv
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from core.utils import load_secrets
+
 load_dotenv()
+
+
 
 
 class Environment(str, Enum):
     DEVELOPMENT = "development"
     PRODUCTION = "production"
 
+
 class Settings(BaseSettings):
-    #Application
+    # Application
     APP_NAME: str = "auction-api-service"
     DEBUG: bool = True
     ROOT_PATH: str = ''
@@ -24,19 +30,35 @@ class Settings(BaseSettings):
     # Database
     DB_HOST: str = "localhost"
     DB_PORT: str = "5432"
-    DB_NAME: str = "test_db"
-    DB_USER: str = "postgres"
-    DB_PASS: str = "testpass"
+    DB_NAME: str = Field(
+        default="test_db",
+        alias="API_DB_NAME",
+    )
+    DB_USER: str = Field(
+        default="postgres",
+        alias="API_DB_USER",
+    )
+    DB_PASS: str = Field(
+        default="testpass",
+        alias="API_DB_PASS",
+    )
 
     # gRPC
     GRPC_SERVER_PORT: str = "50051"
 
-    #Redis
+    # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
-    #Auction API
-    AUCTION_API_KEY: str
+    # Auction API
+    AUCTION_API_KEY: str = ""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
+
+
+load_secrets()
 settings = Settings()

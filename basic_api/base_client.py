@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from rfc9457 import BadRequestProblem, NotFoundProblem
 
 from auction_api.types.common import SiteEnum
-from core.logger import logger, log_async_execution_time
+from core.logger import logger, log_async_execution_time, truncate_log_value
 from .types import BaseClientIn
 import httpx
 
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 T = TypeVar("T", bound=BaseModel)
+MAX_ERROR_BODY_LOG_CHARS = 1000
 
 class BaseClient(ABC):
     def __init__(self, data: BaseClientIn):
@@ -33,9 +34,9 @@ class BaseClient(ABC):
             logger.error(f"Request to API Failed", exc_info=e, extra={
                 'data': {
                     'url': url,
-                    'headers': headers,
-                    'kwargs': kwargs,
-                    'error': e
+                    'headers': truncate_log_value(headers),
+                    'kwargs': truncate_log_value(kwargs),
+                    'error': truncate_log_value(str(e))
                 }
             })
             raise BadRequestProblem(detail='Request to API Failed') from e
@@ -46,14 +47,13 @@ class BaseClient(ABC):
 
         payload = data.model_dump(exclude_none=True, mode='json')
 
-
         site_val = payload.get('site')
         if site_val is not None:
             normalized = str(site_val).lower()
             if normalized in {SiteEnum.ALL_NUM, SiteEnum.ALL}:
                 payload['site'] = [1, 2]
 
-        logger.debug(f"Request payload: {payload}, url: {url}, data: {data}")
+        logger.debug(f"Request payload: {truncate_log_value(payload)}, url: {url}")
 
         if schema.method == "GET":
             response = await self._make_request("GET", url, params=payload)
@@ -80,8 +80,12 @@ class BaseClient(ABC):
             logger.warning(f"Request failed, lot not found or smth", extra={
                 'data': {
                     'url': url,
-                    'payload': payload,
-                    'response': response_data if response_data is not None else response.text
+                    'payload': truncate_log_value(payload),
+                    'status_code': response.status_code,
+                    'response_content_length': len(response.content or b""),
+                    'response_preview': (response.content or b"")[:MAX_ERROR_BODY_LOG_CHARS].decode(
+                        "utf-8", errors="replace"
+                    ),
                 }
             })
             raise NotFoundProblem('Lot not found')
@@ -91,8 +95,11 @@ class BaseClient(ABC):
                 "data": {
                     "url": url,
                     "status_code": response.status_code,
-                    "payload": payload,
-                    "response_text": response.text,
+                    "payload": truncate_log_value(payload),
+                    "response_content_length": len(response.content or b""),
+                    "response_preview": (response.content or b"")[:MAX_ERROR_BODY_LOG_CHARS].decode(
+                        "utf-8", errors="replace"
+                    ),
                 }
             })
             raise BadRequestProblem(detail='Invalid JSON response from API')
@@ -110,6 +117,4 @@ class BaseClient(ABC):
             return response.json()
         except ValueError:
             return None
-
-
 

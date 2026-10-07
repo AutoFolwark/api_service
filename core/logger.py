@@ -176,7 +176,7 @@ def setup_logging(
         include_extra=include_extra
     )
     loguru_logger.remove()
-    loguru_logger.add(console_logger.sink, format="{message}", level=level, backtrace=True, diagnose=True, enqueue=True)
+    loguru_logger.add(console_logger.sink, format="{message}", level=level, backtrace=True, diagnose=True, enqueue=False)
     return loguru_logger.bind(service=service_name, environment=environment)
 
 
@@ -186,3 +186,10 @@ logger = setup_logging(
     level="DEBUG" if settings.DEBUG else "INFO",
     include_extra=True
 )
+
+
+def truncate_log_value(value: Any, max_chars: int = 2000) -> str:
+    serialized = json.dumps(value, ensure_ascii=False, default=str)
+    if len(serialized) <= max_chars:
+        return serialized
+    return f"{serialized[:max_chars]}... [truncated; {len(serialized)} characters total]"
