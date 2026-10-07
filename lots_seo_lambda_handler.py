@@ -20,7 +20,7 @@ from request_schemas.db_save_schemas import DBCurrentDeleteIn, DBCurrentUpdateIn
 
 PAGE_SIZE = 1000
 MAX_CONCURRENT_PAGE_REQUESTS = 8
-POSTGRES_BATCH_SIZE = 500
+POSTGRES_MAX_BIND_PARAMETERS = 32767
 SQLITE_MAX_BIND_PARAMETERS = 900
 
 
@@ -170,7 +170,9 @@ async def _save_lots(
 
             for columns, group in groups.items():
                 if dialect_name == "postgresql":
-                    batch_size = POSTGRES_BATCH_SIZE
+                    batch_size = max(
+                        1, POSTGRES_MAX_BIND_PARAMETERS // len(columns)
+                    )
                 else:
                     batch_size = max(1, SQLITE_MAX_BIND_PARAMETERS // len(columns))
 
