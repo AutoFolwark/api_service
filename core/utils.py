@@ -10,6 +10,16 @@ SPECIAL_MAPPING = {
     "DB_USER": "API_DB_USER",
 }
 
+AWS_CREDENTIAL_ENV_KEYS = {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"}
+
+
+def _infisical_environment(is_aws: bool) -> str:
+
+    value = os.environ.get("INFISICAL_ENV", "").strip()
+    if value:
+        return value
+    return "prod" if is_aws else "dev"
+
 
 def load_secrets():
     # core.logger depends on config.settings, which isn't built until after this runs
@@ -65,17 +75,29 @@ def load_secrets():
             )
 
 
+            infisical_env = _infisical_environment(is_aws)
+            logger.info("Loading secrets from Infisical environment {}", infisical_env)
+
             infisical_secrets = client.secrets.list_secrets(
                 project_id=project_id,
-                environment_slug="prod" if is_aws else "dev",
+                environment_slug=infisical_env,
                 secret_path="/"
             )
+            in_lambda = "AWS_LAMBDA_FUNCTION_NAME" in os.environ
+            skipped_keys = []
             for s in infisical_secrets.secrets:
+                # Lambda signs AWS calls with its role's key pair plus AWS_SESSION_TOKEN;
+                # replacing only the key pair makes every AWS request fail with InvalidToken.
+                if in_lambda and s.secretKey in AWS_CREDENTIAL_ENV_KEYS:
+                    skipped_keys.append(s.secretKey)
+                    continue
                 secret_value = str(s.secretValue)
                 os.environ[s.secretKey] = secret_value
                 mapped_key = SPECIAL_MAPPING.get(s.secretKey)
                 if mapped_key:
                     os.environ[mapped_key] = secret_value
+            if skipped_keys:
+                logger.info("Kept Lambda role credentials; ignored Infisical secrets {}", sorted(skipped_keys))
         except Exception as e:
             logger.opt(exception=e).warning(f"Error fetching secrets from Infisical: {type(e).__name__}: {e!r}")
     else:

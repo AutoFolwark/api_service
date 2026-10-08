@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     # Auction API
     AUCTION_API_KEY: str = ""
 
+    # Sitemaps
+    SITE_URL: str = "https://bidmax.eu"
+    SITEMAP_BUCKET: str = "files-production-307181770546-eu-central-1-an"
+    SITEMAP_BUCKET_REGION: str = "eu-central-1"
+    SITEMAP_PREFIX: str = "sitemaps/"
+    # Traefik routes bidmax.eu/sitemaps/* to /public/v1/sitemaps/*; the generated index links child sitemaps here.
+    SITEMAP_PUBLIC_BASE_URL: str = "https://bidmax.eu/sitemaps"
+    SITEMAP_URL_TTL_SECONDS: int = 3600
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
