@@ -154,6 +154,7 @@ jobs:
           DEPLOY_BRANCH: ${{ github.ref_name }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          INFISICAL_ENV: prod
         with:
           host: ${{ secrets.PROD_SERVER_HOST }}
           username: ${{ secrets.PROD_SERVER_USER }}
@@ -161,11 +162,11 @@ jobs:
           port: 22
           timeout: 300s
           command_timeout: 600s
-          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID,DEPLOY_BRANCH,DEPLOY_PATH,SERVICE_NAME
+          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID,DEPLOY_BRANCH,DEPLOY_PATH,SERVICE_NAME,INFISICAL_ENV
           script: |
             set -e
             COMPOSE_FILE="prod/docker-compose.yml"
-            INFISICAL_ENV="prod"
+            [ -n "${INFISICAL_ENV:-}" ] || { echo "INFISICAL_ENV is unset"; exit 1; }
             [ -n "${DEPLOY_PATH:-}" ] || { echo "DEPLOY_PATH is unset"; exit 1; }
             cd "$DEPLOY_PATH" || exit 1
             export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT_ID" --client-secret="$INFISICAL_CLIENT_SECRET" --domain=https://eu.infisical.com --silent --plain)
@@ -184,7 +185,7 @@ jobs:
 
             ic_run sh -c "docker compose -f $COMPOSE_FILE pull $SERVICES"
             ic_run sh -c "docker compose -f $COMPOSE_FILE up -d $SERVICES"
-            echo "Redeploy completed successfully for: $SERVICES"
+            echo "Redeploy completed successfully for: $SERVICES (INFISICAL_ENV=$INFISICAL_ENV)"
 
       - name: Redeploy ${{ env.SERVICE_NAME }} on staging/demo (Infisical)
         if: github.ref_name == 'dev'
@@ -196,6 +197,7 @@ jobs:
           DEPLOY_BRANCH: ${{ github.ref_name }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
           SERVICE_NAME: ${{ env.SERVICE_NAME }}
+          INFISICAL_ENV: staging
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -203,11 +205,11 @@ jobs:
           port: 22
           timeout: 300s
           command_timeout: 600s
-          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID,DEPLOY_BRANCH,DEPLOY_PATH,SERVICE_NAME
+          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID,DEPLOY_BRANCH,DEPLOY_PATH,SERVICE_NAME,INFISICAL_ENV
           script: |
             set -e
             COMPOSE_FILE="demo/docker-compose.demo.yml"
-            INFISICAL_ENV="staging"
+            [ -n "${INFISICAL_ENV:-}" ] || { echo "INFISICAL_ENV is unset"; exit 1; }
             [ -n "${DEPLOY_PATH:-}" ] || { echo "DEPLOY_PATH is unset"; exit 1; }
             cd "$DEPLOY_PATH" || exit 1
             export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT_ID" --client-secret="$INFISICAL_CLIENT_SECRET" --domain=https://eu.infisical.com --silent --plain)
@@ -226,5 +228,5 @@ jobs:
 
             ic_run sh -c "docker compose -f $COMPOSE_FILE pull $SERVICES"
             ic_run sh -c "docker compose -f $COMPOSE_FILE up -d $SERVICES"
-            echo "Redeploy completed successfully for: $SERVICES"
+            echo "Redeploy completed successfully for: $SERVICES (INFISICAL_ENV=$INFISICAL_ENV)"
 

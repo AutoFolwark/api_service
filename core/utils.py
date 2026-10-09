@@ -1,8 +1,6 @@
 import json
 import os
 from pathlib import Path
-from urllib.error import URLError
-from urllib.request import Request, urlopen
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -12,30 +10,15 @@ SPECIAL_MAPPING = {
     "DB_USER": "API_DB_USER",
 }
 
+AWS_CREDENTIAL_ENV_KEYS = {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"}
 
-def _get_ec2_region() -> str | None:
-    token_request = Request(
-        "http://169.254.169.254/latest/api/token",
-        method="PUT",
-        headers={"X-aws-ec2-metadata-token-ttl-seconds": "60"},
-    )
-    try:
-        with urlopen(token_request, timeout=1) as response:
-            token = response.read().decode()
 
-        identity_request = Request(
-            "http://169.254.169.254/latest/dynamic/instance-identity/document",
-            headers={"X-aws-ec2-metadata-token": token},
-        )
-        with urlopen(identity_request, timeout=1) as response:
-            identity = json.loads(response.read())
-        if isinstance(identity, dict) and isinstance(identity.get("instanceId"), str):
-            region = identity.get("region")
-            if isinstance(region, str):
-                return region
-    except (OSError, URLError, ValueError):
-        pass
-    return None
+def _infisical_environment(is_aws: bool) -> str:
+
+    value = os.environ.get("INFISICAL_ENV", "").strip()
+    if value:
+        return value
+    return "prod" if is_aws else "dev"
 
 
 def load_secrets():
@@ -44,11 +27,12 @@ def load_secrets():
     import boto3
     from infisical_sdk import InfisicalSDKClient
 
-    ec2_region = _get_ec2_region()
+    aws_session = boto3.Session()
+    aws_credentials = aws_session.get_credentials()
     is_aws = (
             "AWS_LAMBDA_FUNCTION_NAME" in os.environ
             or "AWS_EXECUTION_ENV" in os.environ
-            or ec2_region is not None
+            or aws_credentials is not None
     )
 
     def is_in_docker():
@@ -57,9 +41,9 @@ def load_secrets():
     if is_aws:
         logger.info("Loading secrets from AWS Secrets Manager")
         try:
-            secrets_client = boto3.client(
+            secrets_client = aws_session.client(
                 "secretsmanager",
-                **({"region_name": ec2_region} if ec2_region else {}),
+                **({"region_name": aws_session.region_name} if aws_session.region_name else {}),
             )
             response = secrets_client.get_secret_value(SecretId="prod")
             secrets_dict = json.loads(response['SecretString'])
@@ -91,17 +75,29 @@ def load_secrets():
             )
 
 
+            infisical_env = _infisical_environment(is_aws)
+            logger.info("Loading secrets from Infisical environment {}", infisical_env)
+
             infisical_secrets = client.secrets.list_secrets(
                 project_id=project_id,
-                environment_slug="prod" if is_aws else "dev",
+                environment_slug=infisical_env,
                 secret_path="/"
             )
+            in_lambda = "AWS_LAMBDA_FUNCTION_NAME" in os.environ
+            skipped_keys = []
             for s in infisical_secrets.secrets:
+                # Lambda signs AWS calls with its role's key pair plus AWS_SESSION_TOKEN;
+                # replacing only the key pair makes every AWS request fail with InvalidToken.
+                if in_lambda and s.secretKey in AWS_CREDENTIAL_ENV_KEYS:
+                    skipped_keys.append(s.secretKey)
+                    continue
                 secret_value = str(s.secretValue)
                 os.environ[s.secretKey] = secret_value
                 mapped_key = SPECIAL_MAPPING.get(s.secretKey)
                 if mapped_key:
                     os.environ[mapped_key] = secret_value
+            if skipped_keys:
+                logger.info("Kept Lambda role credentials; ignored Infisical secrets {}", sorted(skipped_keys))
         except Exception as e:
             logger.opt(exception=e).warning(f"Error fetching secrets from Infisical: {type(e).__name__}: {e!r}")
     else:
