@@ -41,10 +41,8 @@ def load_secrets():
     if is_aws:
         logger.info("Loading secrets from AWS Secrets Manager")
         try:
-            secrets_client = aws_session.client(
-                "secretsmanager",
-                **({"region_name": aws_session.region_name} if aws_session.region_name else {}),
-            )
+            secrets_client = aws_session.client("secretsmanager")
+
             response = secrets_client.get_secret_value(SecretId="prod")
             secrets_dict = json.loads(response['SecretString'])
 
