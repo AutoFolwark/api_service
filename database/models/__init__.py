@@ -8,3 +8,4 @@ from .status import Status
 from .damage import Damage
 from .transmission import Transmission
 from .title_indicators import TitleIndicators
+from .saved_lots import SavedLots

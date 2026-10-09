@@ -15,6 +15,7 @@ from routers.v1.lots import cars_router
 from routers.v1.history_lots import history_cars_router
 from routers.v1.sales_history import sales_history_router
 from routers.v1.similar_archived_sales import similar_sales_router
+from routers.v1.sitemaps import sitemaps_router
 from routers.v1.title_indicators import title_indicators_router
 
 
@@ -54,6 +55,8 @@ public_v1_router.include_router(sales_history_router, prefix='/lot/sales-history
 public_v1_router.include_router(similar_sales_router, prefix='/lot/similar-sales', tags=["Similar Sales"])
 
 public_v1_router.include_router(title_indicators_router, prefix='/lot/title-indicators', tags=["Title Indicators"])
+
+public_v1_router.include_router(sitemaps_router, prefix='/sitemaps', tags=["Sitemaps"])
 app.include_router(public_v1_router)
 
 app.include_router(health_router, tags=["Health"])
