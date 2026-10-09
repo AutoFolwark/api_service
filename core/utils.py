@@ -11,6 +11,7 @@ SPECIAL_MAPPING = {
 }
 
 AWS_CREDENTIAL_ENV_KEYS = {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"}
+AWS_DEFAULT_REGION = "eu-central-1"
 
 
 def _infisical_environment(is_aws: bool) -> str:
@@ -19,6 +20,15 @@ def _infisical_environment(is_aws: bool) -> str:
     if value:
         return value
     return "prod" if is_aws else "dev"
+
+
+def _aws_region(session_region: str | None) -> str:
+    return (
+        session_region
+        or os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION")
+        or AWS_DEFAULT_REGION
+    )
 
 
 def load_secrets():
@@ -41,8 +51,10 @@ def load_secrets():
     if is_aws:
         logger.info("Loading secrets from AWS Secrets Manager")
         try:
-            secrets_client = aws_session.client("secretsmanager")
-
+            secrets_client = aws_session.client(
+                "secretsmanager",
+                region_name=_aws_region(aws_session.region_name),
+            )
             response = secrets_client.get_secret_value(SecretId="prod")
             secrets_dict = json.loads(response['SecretString'])
 
