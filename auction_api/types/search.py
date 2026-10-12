@@ -24,12 +24,24 @@ class DBManyDeletedLots(BaseModel):
     data: list[DBDeleteLot]
 
 
+class DecodedSearch(BaseModel):
+    query: str
+    year: int | None = None
+    make: str | None = None
+    make_slug: str | None = None
+    model: str | None = None
+    model_slug: str | None = None
+    unrecognized: list[str] = []
+
+
 class BasicManyCurrentLots(BasicPaginationInfo):
     data: list[BasicLot]
+    decoded_search: DecodedSearch | None = None
 
 
 class BasicManyHistoryLot(BasicPaginationInfo):
     data: list[BasicHistoryLot]
+    decoded_search: DecodedSearch | None = None
 
 
 class SortEnum(str, Enum):
@@ -66,6 +78,13 @@ class SellerTypeEnum(str, Enum):
 
 
 class CommonSearchParams(SiteIn):
+    search: str | None = Field(
+        None,
+        min_length=2,
+        max_length=100,
+        exclude=True,
+        description="Free text, e.g. '2016 camry' or 'bmw 1 series 2010'",
+    )
     make: str | None = Field(None, description="Vehicle make")
     model: str | None = Field(None, description="Vehicle model")
     vehicle_type: str | None = Field(None, description="Vehicle type")

@@ -10,6 +10,11 @@ from core.logger import logger
 from database.db.session import get_async_db
 from dependencies.auction_api_service import get_auction_api_service
 from request_schemas.lot import LotByIDIn, LotByVINIn
+from services.search_query_decoder import (
+    apply_decoded_search,
+    decode_search_query,
+    require_decoded_search,
+)
 from services.transform_slugs import transform_slugs
 
 history_cars_router = APIRouter()
@@ -56,9 +61,19 @@ async def get_history_lots(
     db: AsyncSession = Depends(get_async_db),
     api: AuctionApiClient = Depends(get_auction_api_service),
 ):
+    decoded = None
+    if data.search:
+        decoded = await decode_search_query(
+            data.search, db, vehicle_type=data.vehicle_type
+        )
+        require_decoded_search(decoded)
+        apply_decoded_search(data, decoded)
+
     data = await transform_slugs(data, db)
     logger.debug(
         "New request to get many history lots",
         extra={"data": data.model_dump(mode="json")},
     )
-    return await api.request_with_schema(AuctionApiClient.GET_HISTORY_LOTS, data)
+    result = await api.request_with_schema(AuctionApiClient.GET_HISTORY_LOTS, data)
+    result.decoded_search = decoded
+    return result

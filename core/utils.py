@@ -15,6 +15,11 @@ AWS_CREDENTIAL_ENV_KEYS = {
     "AWS_SECRET_ACCESS_KEY",
     "AWS_SESSION_TOKEN",
 }
+INFISICAL_CREDENTIAL_ENV_KEYS = (
+    "INFISICAL_CLIENT_ID",
+    "INFISICAL_AUTH_SECRET",
+    "INFISICAL_PROJECT_ID",
+)
 AWS_DEFAULT_REGION = "eu-central-1"
 
 
@@ -35,6 +40,10 @@ def _aws_region(session_region: str | None) -> str:
     )
 
 
+def _has_infisical_creds() -> bool:
+    return any(os.environ.get(key, "").strip() for key in INFISICAL_CREDENTIAL_ENV_KEYS)
+
+
 def load_secrets():
     # core.logger depends on config.settings, which isn't built until after this runs
     import boto3
@@ -43,7 +52,8 @@ def load_secrets():
 
     aws_session = boto3.Session()
     aws_credentials = aws_session.get_credentials()
-    is_aws = (
+    # Local .env Infisical credentials win over whatever boto3 finds on the machine.
+    is_aws = not _has_infisical_creds() and (
         "AWS_LAMBDA_FUNCTION_NAME" in os.environ
         or "AWS_EXECUTION_ENV" in os.environ
         or aws_credentials is not None

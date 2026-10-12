@@ -18,6 +18,11 @@ from database.models.saved_lots import SavedLots
 from dependencies.auction_api_service import get_auction_api_service
 from request_schemas.lot import CurrentBidOut, LotByIDIn
 from schemas.vin_or_lot import VinOrLotIn
+from services.search_query_decoder import (
+    apply_decoded_search,
+    decode_search_query,
+    require_decoded_search,
+)
 from services.transform_slugs import transform_slugs
 
 cars_router = APIRouter()
@@ -109,11 +114,23 @@ async def get_current_lots(
     db: AsyncSession = Depends(get_async_db),
     search_params: CurrentSearchParams = Query(...),
 ):
+    decoded = None
+    if search_params.search:
+        decoded = await decode_search_query(
+            search_params.search,
+            db,
+            vehicle_type=search_params.vehicle_type,
+        )
+        require_decoded_search(decoded)
+        apply_decoded_search(search_params, decoded)
     if not search_params.auction_date_from:
         search_params.auction_date_from = datetime.now(UTC)
+
     data = await transform_slugs(search_params, db)
     logger.debug(
         "New request to get many current lots",
         extra={"data": data.model_dump(mode="json")},
     )
-    return await api.request_with_schema(api.GET_CURRENT_LOTS, data)
+    result = await api.request_with_schema(api.GET_CURRENT_LOTS, data)
+    result.decoded_search = decoded
+    return result
