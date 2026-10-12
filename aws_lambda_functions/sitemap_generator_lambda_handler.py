@@ -17,7 +17,6 @@ from config import settings
 from database.db.session import AsyncSessionLocal, engine_async
 from database.models.saved_lots import SavedLots
 
-
 LANGUAGES = ("en", "pl", "uk", "cs", "de")
 MAX_URLS_PER_SITEMAP = 50_000
 FETCH_BATCH = 20_000
@@ -52,7 +51,11 @@ def _path_segment(value: str) -> str:
 
 
 def _lot_slug(row: Row) -> str:
-    parts = (str(part).strip() for part in (row.year, row.make, row.model, row.vin) if part is not None)
+    parts = (
+        str(part).strip()
+        for part in (row.year, row.make, row.model, row.vin)
+        if part is not None
+    )
     slug = "-".join(part for part in parts if part)
     slug = _WHITESPACE.sub("-", slug)
     slug = _REPEATED_HYPHENS.sub("-", slug).strip("-")
@@ -211,7 +214,9 @@ class BuildTimings:
         await awaitable
         self.upload_wait_seconds += time.perf_counter() - started_at
 
-    def log_progress(self, lot_count: int, uploaded_count: int, final: bool = False) -> None:
+    def log_progress(
+        self, lot_count: int, uploaded_count: int, final: bool = False
+    ) -> None:
         elapsed = time.perf_counter() - self.started_at
         logger.info(
             "{} {} lots ({:.0f} lots/s, {} files uploaded) in {:.1f}s: "
@@ -227,10 +232,14 @@ class BuildTimings:
         )
 
 
-async def _build_and_upload_lot_sitemaps(uploader: ChunkUploader) -> tuple[list[SitemapChunk], int]:
+async def _build_and_upload_lot_sitemaps(
+    uploader: ChunkUploader,
+) -> tuple[list[SitemapChunk], int]:
     writers = {lang: SitemapChunkWriter(lang) for lang in LANGUAGES}
     site_url = escape(settings.SITE_URL.rstrip("/"))
-    loc_prefixes = {lang: f"<url><loc>{site_url}/{lang}".encode("utf-8") for lang in LANGUAGES}
+    loc_prefixes = {
+        lang: f"<url><loc>{site_url}/{lang}".encode("utf-8") for lang in LANGUAGES
+    }
 
     timings = BuildTimings()
     lot_count = 0
@@ -290,12 +299,16 @@ def _list_static_sitemaps(s3: Any) -> list[tuple[str, datetime | None]]:
     paginator = s3.get_paginator("list_objects_v2")
     static_sitemaps = [
         (obj["Key"].removeprefix(settings.SITEMAP_PREFIX), obj.get("LastModified"))
-        for page in paginator.paginate(Bucket=settings.SITEMAP_BUCKET, Prefix=_sitemap_key(STATIC_SITEMAP_FOLDER))
+        for page in paginator.paginate(
+            Bucket=settings.SITEMAP_BUCKET, Prefix=_sitemap_key(STATIC_SITEMAP_FOLDER)
+        )
         for obj in page.get("Contents", [])
         if obj["Key"].endswith(STATIC_SITEMAP_SUFFIXES)
     ]
     if not static_sitemaps:
-        logger.warning("No static sitemaps found under {}", _sitemap_key(STATIC_SITEMAP_FOLDER))
+        logger.warning(
+            "No static sitemaps found under {}", _sitemap_key(STATIC_SITEMAP_FOLDER)
+        )
     return sorted(static_sitemaps)
 
 
@@ -305,20 +318,24 @@ def _delete_stale_sitemaps(s3: Any, keep_names: set[str]) -> int:
     paginator = s3.get_paginator("list_objects_v2")
     keys = [
         obj["Key"]
-        for page in paginator.paginate(Bucket=settings.SITEMAP_BUCKET, Prefix=settings.SITEMAP_PREFIX)
+        for page in paginator.paginate(
+            Bucket=settings.SITEMAP_BUCKET, Prefix=settings.SITEMAP_PREFIX
+        )
         for obj in page.get("Contents", [])
         if not obj["Key"].startswith(static_prefix) and obj["Key"] not in keep_keys
     ]
 
     for start in range(0, len(keys), S3_DELETE_BATCH):
-        batch = keys[start:start + S3_DELETE_BATCH]
+        batch = keys[start : start + S3_DELETE_BATCH]
         response = s3.delete_objects(
             Bucket=settings.SITEMAP_BUCKET,
             Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True},
         )
         errors = response.get("Errors")
         if errors:
-            raise RuntimeError(f"Failed to delete {len(errors)} sitemap objects: {errors[:5]}")
+            raise RuntimeError(
+                f"Failed to delete {len(errors)} sitemap objects: {errors[:5]}"
+            )
     return len(keys)
 
 

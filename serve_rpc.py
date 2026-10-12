@@ -1,19 +1,23 @@
 import asyncio
 import os
-
-import grpc
 import signal
 import sys
-from grpc_health.v1 import health_pb2_grpc, health_pb2
+
+import grpc
+from grpc_health.v1 import health_pb2, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'rpc_server', 'gen', 'python'))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "rpc_server", "gen", "python")
+)
 
 from auction.v1 import lot_pb2, lot_pb2_grpc
-from config import settings, Environment
+
+from config import Environment, settings
 from core.logger import logger
 from rpc_server.health import HealthCheckServicer
 from rpc_server.lot_rpc import LotRpc
+
 
 class GracefulServer:
     def __init__(self):
@@ -23,8 +27,7 @@ class GracefulServer:
     async def setup_server(self):
         self.server = grpc.aio.server()
 
-        listen_addr = f'[::]:{settings.GRPC_SERVER_PORT}'
-
+        listen_addr = f"[::]:{settings.GRPC_SERVER_PORT}"
 
         self.server.add_insecure_port(listen_addr)
 
@@ -34,8 +37,8 @@ class GracefulServer:
         if settings.ENVIRONMENT == Environment.DEVELOPMENT:
             try:
                 service_names = [
-                    lot_pb2.DESCRIPTOR.services_by_name['LotService'].full_name,
-                    health_pb2.DESCRIPTOR.services_by_name['Health'].full_name,
+                    lot_pb2.DESCRIPTOR.services_by_name["LotService"].full_name,
+                    health_pb2.DESCRIPTOR.services_by_name["Health"].full_name,
                     reflection.SERVICE_NAME,
                 ]
                 reflection.enable_server_reflection(service_names, self.server)
@@ -84,5 +87,5 @@ async def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

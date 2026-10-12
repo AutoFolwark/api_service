@@ -1,6 +1,6 @@
 import hashlib
 import json
-from typing import Optional, Any
+from typing import Any, Optional
 
 import redis
 
@@ -23,11 +23,7 @@ class RedisCache:
 
     async def set(self, key: str, value: Any, ttl: int = 300) -> None:
         try:
-            await self.client.setex(
-                key,
-                ttl,
-                json.dumps(value, default=str)
-            )
+            await self.client.setex(key, ttl, json.dumps(value, default=str))
         except Exception as e:
             logger.warning(f"Redis set error for key {key}: {e}")
 
@@ -39,23 +35,20 @@ class RedisCache:
 
     async def delete_pattern(self, pattern: str) -> None:
         try:
-            cursor = b'0'
+            cursor = b"0"
             while cursor:
                 cursor, keys = await self.client.scan(
-                    cursor=cursor,
-                    match=pattern,
-                    count=100
+                    cursor=cursor, match=pattern, count=100
                 )
                 if keys:
                     await self.client.delete(*keys)
-                if cursor == b'0':
+                if cursor == b"0":
                     break
         except Exception as e:
             logger.warning(f"Redis delete pattern error for {pattern}: {e}")
 
 
 class CacheKeyBuilder:
-
     @staticmethod
     def lot_by_id(lot_id: int, site: str | None = None) -> str:
         site_part = f":{site}" if site else ""
@@ -80,7 +73,7 @@ class CacheKeyBuilder:
     def current_lots(**filters) -> str:
         if filters:
             filter_json = json.dumps(filters, sort_keys=True)
-            filter_md5 = hashlib.md5(filter_json.encode('utf-8')).hexdigest()
+            filter_md5 = hashlib.md5(filter_json.encode("utf-8")).hexdigest()
             return f"lots:current:{filter_md5}"
         return "lots:current:all"
 
@@ -88,6 +81,6 @@ class CacheKeyBuilder:
     def average_price(**filters) -> str:
         if filters:
             filter_json = json.dumps(filters, sort_keys=True)
-            filter_md5 = hashlib.md5(filter_json.encode('utf-8')).hexdigest()
+            filter_md5 = hashlib.md5(filter_json.encode("utf-8")).hexdigest()
             return f"average_price:{filter_md5}"
         return "average_price:without_filter"

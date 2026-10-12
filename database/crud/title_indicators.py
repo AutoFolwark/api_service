@@ -16,10 +16,15 @@ class TitleIndicatorsService(
     def __init__(self, session: AsyncSession):
         super().__init__(TitleIndicators, session)
 
-    async def get_by_title_name_n_site(self, site: SimpleSiteEnum, title_name: str) -> TitleIndicators | None:
+    async def get_by_title_name_n_site(
+        self, site: SimpleSiteEnum, title_name: str
+    ) -> TitleIndicators | None:
         stmt = (
             select(TitleIndicators)
-            .where(TitleIndicators.site == site.value, TitleIndicators.title_name == title_name)
+            .where(
+                TitleIndicators.site == site.value,
+                TitleIndicators.title_name == title_name,
+            )
             .limit(1)
         )
         result = await self.session.execute(stmt)

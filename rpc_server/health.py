@@ -1,4 +1,4 @@
-from grpc_health.v1 import health_pb2_grpc, health_pb2
+from grpc_health.v1 import health_pb2, health_pb2_grpc
 
 
 class HealthCheckServicer(health_pb2_grpc.HealthServicer):

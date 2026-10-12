@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -10,8 +10,8 @@ from core.logger import logger
 
 
 class FormGetType(str, Enum):
-    HISTORY = 'history'
-    ACTIVE = 'active'
+    HISTORY = "history"
+    ACTIVE = "active"
 
 
 class BasicLot(BaseModel):
@@ -71,7 +71,7 @@ class BasicLot(BaseModel):
     vehicle_score: Optional[str] = None
     form_get_type: FormGetType = Field(default=FormGetType.HISTORY)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     @classmethod
     def validate_together(cls, data):
         try:
@@ -83,10 +83,10 @@ class BasicLot(BaseModel):
                 else:
                     data.form_get_type = FormGetType.HISTORY
             else:
-                if hasattr(data, 'sale_date'):
+                if hasattr(data, "sale_date"):
                     data.form_get_type = FormGetType.HISTORY
         except Exception as e:
-            logger.exception(f'Failed to parse auction_date: {e}')
+            logger.exception(f"Failed to parse auction_date: {e}")
             data.form_get_type = FormGetType.HISTORY
         return data
 
@@ -114,7 +114,6 @@ class SaleHistoryItem(BaseModel):
             data["base_site"] = AuctionApiUtils.num_to_auction_name(site)
 
         return data
-
 
 
 class BasicHistoryLot(BasicLot):

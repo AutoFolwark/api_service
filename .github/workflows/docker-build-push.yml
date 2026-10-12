@@ -229,4 +229,3 @@ jobs:
             ic_run sh -c "docker compose -f $COMPOSE_FILE pull $SERVICES"
             ic_run sh -c "docker compose -f $COMPOSE_FILE up -d $SERVICES"
             echo "Redeploy completed successfully for: $SERVICES (INFISICAL_ENV=$INFISICAL_ENV)"
-

@@ -11,11 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from auction_api.api import AuctionApiClient
 from auction_api.types.db_lot import DBDeleteLot, DBUpdateLot
-from aws_lambda_functions.saved_lots_upsert import MAX_CONCURRENT_SAVES, create_save_engine, save_lots
+from aws_lambda_functions.saved_lots_upsert import (
+    MAX_CONCURRENT_SAVES,
+    create_save_engine,
+    save_lots,
+)
 from database.db.session import AsyncSessionLocal, engine_async
 from database.models.saved_lots import SavedLots
 from request_schemas.db_save_schemas import DBCurrentDeleteIn, DBCurrentUpdateIn
-
 
 PAGE_SIZE = 1000
 MAX_IN_FLIGHT_PAGES = 6
@@ -39,10 +42,7 @@ async def _fetch_deleted_lots(
 async def _mark_deleted_lots(
     lots: Iterable[DBDeleteLot],
 ) -> tuple[set[tuple[str, int]], int]:
-    deleted_keys = {
-        (str(lot.lot_id), lot.site)
-        for lot in lots
-    }
+    deleted_keys = {(str(lot.lot_id), lot.site) for lot in lots}
     if not deleted_keys:
         return deleted_keys, 0
 
@@ -51,7 +51,9 @@ async def _mark_deleted_lots(
     deleted_key_iterator = iter(deleted_keys)
     async with AsyncSessionLocal() as session:
         async with session.begin():
-            while batch := list(islice(deleted_key_iterator, SQLITE_MAX_BIND_PARAMETERS // 2)):
+            while batch := list(
+                islice(deleted_key_iterator, SQLITE_MAX_BIND_PARAMETERS // 2)
+            ):
                 result = await session.execute(
                     update(SavedLots)
                     .where(
@@ -201,6 +203,7 @@ def lambda_handler(event, context):
             "Lot sync process finished in {:.3f} seconds",
             time.perf_counter() - started_at,
         )
+
 
 if __name__ == "__main__":
     result = lambda_handler(None, None)

@@ -18,10 +18,13 @@ from schemas.filters import AllFiltersOut
 
 filters_router = APIRouter()
 
-@filters_router.get("/all-filters", description='Get all static filters', response_model=AllFiltersOut)
-@cache(expire=60*360, key_builder=default_key_builder)
+
+@filters_router.get(
+    "/all-filters", description="Get all static filters", response_model=AllFiltersOut
+)
+@cache(expire=60 * 360, key_builder=default_key_builder)
 async def filters(
-        db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     damage_service = DamageService(db)
     document_service = DocumentService(db)
@@ -31,24 +34,46 @@ async def filters(
     vehicle_type_service = VehicleTypeService(db)
 
     return AllFiltersOut(
-        damage=[FilterRead.model_validate(filter_obj) for filter_obj in await damage_service.get_all_sorted('name')],
-        document=[FilterRead.model_validate(filter_obj) for filter_obj in await document_service.get_all_sorted('name')],
-        drive=[FilterRead.model_validate(filter_obj) for filter_obj in await drive_service.get_all_sorted('name')],
-        status=[FilterRead.model_validate(filter_obj) for filter_obj in await status_service.get_all_sorted('name')],
-        transmission=[FilterRead.model_validate(filter_obj) for filter_obj in await transmission_service.get_all_sorted('name')],
-        vehicle_type=[FilterRead.model_validate(filter_obj) for filter_obj in await vehicle_type_service.get_all_sorted('name')],
+        damage=[
+            FilterRead.model_validate(filter_obj)
+            for filter_obj in await damage_service.get_all_sorted("name")
+        ],
+        document=[
+            FilterRead.model_validate(filter_obj)
+            for filter_obj in await document_service.get_all_sorted("name")
+        ],
+        drive=[
+            FilterRead.model_validate(filter_obj)
+            for filter_obj in await drive_service.get_all_sorted("name")
+        ],
+        status=[
+            FilterRead.model_validate(filter_obj)
+            for filter_obj in await status_service.get_all_sorted("name")
+        ],
+        transmission=[
+            FilterRead.model_validate(filter_obj)
+            for filter_obj in await transmission_service.get_all_sorted("name")
+        ],
+        vehicle_type=[
+            FilterRead.model_validate(filter_obj)
+            for filter_obj in await vehicle_type_service.get_all_sorted("name")
+        ],
     )
 
-@filters_router.get("/{vehicle_type_slug}/makes", description='Get all static filters', response_model=list[FilterRead])
-async def filters(
-        vehicle_type_slug: str = Path(..., description='Vehicle type slug'),
-        db: AsyncSession = Depends(get_async_db),
 
+@filters_router.get(
+    "/{vehicle_type_slug}/makes",
+    description="Get all static filters",
+    response_model=list[FilterRead],
+)
+async def filters(
+    vehicle_type_slug: str = Path(..., description="Vehicle type slug"),
+    db: AsyncSession = Depends(get_async_db),
 ):
     make_service = MakeService(db)
     vehicle_type_service = VehicleTypeService(db)
 
-    vehicle_type = await vehicle_type_service.get_by_field('slug', vehicle_type_slug)
+    vehicle_type = await vehicle_type_service.get_by_field("slug", vehicle_type_slug)
     if not vehicle_type:
         raise NotFoundProblem(detail="Vehicle type not found")
 
@@ -57,19 +82,22 @@ async def filters(
         return []
     return [FilterRead.model_validate(make_obj) for make_obj in makes]
 
-@filters_router.get("/{vehicle_type_slug}/makes/{make_slug}/models",
-                    description='Get all models by make and vehicle type',
-                    response_model=list[FilterRead])
+
+@filters_router.get(
+    "/{vehicle_type_slug}/makes/{make_slug}/models",
+    description="Get all models by make and vehicle type",
+    response_model=list[FilterRead],
+)
 async def filters(
-        vehicle_type_slug: str = Path(..., description='Vehicle type slug'),
-        make_slug: str = Path(..., description='Make slug'),
-        db: AsyncSession = Depends(get_async_db),
-)-> list[FilterRead]:
+    vehicle_type_slug: str = Path(..., description="Vehicle type slug"),
+    make_slug: str = Path(..., description="Make slug"),
+    db: AsyncSession = Depends(get_async_db),
+) -> list[FilterRead]:
     make_service = MakeService(db)
     vehicle_type_service = VehicleTypeService(db)
     model_service = ModelService(db)
 
-    vehicle_type = await vehicle_type_service.get_by_field('slug',vehicle_type_slug)
+    vehicle_type = await vehicle_type_service.get_by_field("slug", vehicle_type_slug)
     if not vehicle_type:
         raise NotFoundProblem(detail="Vehicle type not found")
 
@@ -79,11 +107,3 @@ async def filters(
 
     models = await model_service.get_by_make(make)
     return [FilterRead.model_validate(model_obj) for model_obj in models]
-
-
-
-
-
-
-
-

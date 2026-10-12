@@ -10,4 +10,3 @@ class AllFiltersOut(BaseModel):
     drive: list[FilterRead]
     status: list[FilterRead]
     vehicle_type: list[FilterRead]
-

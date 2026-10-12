@@ -9,8 +9,6 @@ from core.utils import load_secrets
 load_dotenv()
 
 
-
-
 class Environment(str, Enum):
     DEVELOPMENT = "development"
     PRODUCTION = "production"
@@ -20,7 +18,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "auction-api-service"
     DEBUG: bool = True
-    ROOT_PATH: str = ''
+    ROOT_PATH: str = ""
     ENVIRONMENT: Environment = Environment.DEVELOPMENT
 
     @property
@@ -62,11 +60,8 @@ class Settings(BaseSettings):
     SITEMAP_URL_TTL_SECONDS: int = 3600
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
-
 
 
 load_secrets()

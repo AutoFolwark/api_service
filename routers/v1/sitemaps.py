@@ -34,7 +34,10 @@ def _is_valid_sitemap_path(path: str) -> bool:
     if not path.endswith(SITEMAP_SUFFIXES):
         return False
     segments = path.split("/")
-    return all(segment not in (".", "..") and _PATH_SEGMENT.fullmatch(segment) for segment in segments)
+    return all(
+        segment not in (".", "..") and _PATH_SEGMENT.fullmatch(segment)
+        for segment in segments
+    )
 
 
 def _presigned_sitemap_url(key: str) -> str | None:
@@ -62,7 +65,9 @@ async def get_sitemap(path: str):
     if not _is_valid_sitemap_path(path):
         raise NotFoundProblem(detail="Sitemap not found")
 
-    url = await run_in_threadpool(_presigned_sitemap_url, f"{settings.SITEMAP_PREFIX}{path}")
+    url = await run_in_threadpool(
+        _presigned_sitemap_url, f"{settings.SITEMAP_PREFIX}{path}"
+    )
     if url is None:
         raise NotFoundProblem(detail="Sitemap not found")
 

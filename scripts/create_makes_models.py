@@ -1,21 +1,23 @@
 import json
+
 import pandas as pd
 import requests
 import slugify
+
 from config import settings
 
 
 def get_json_data_from_api(vehicle_type: str) -> dict:
-    url = f'https://api.apicar.store/api/cars/filters?vehicle_type={vehicle_type}&load_all_filters=true'
+    url = f"https://api.apicar.store/api/cars/filters?vehicle_type={vehicle_type}&load_all_filters=true"
     headers = {
-        'api-key': settings.AUCTION_API_KEY,
+        "api-key": settings.AUCTION_API_KEY,
     }
     response = requests.get(url, headers=headers)
     return response.json()
 
 
 def get_json_data():
-    with open('cars_filters.json') as f:
+    with open("cars_filters.json") as f:
         return json.load(f)
 
 
@@ -32,14 +34,11 @@ VEHICLE_TYPES = [
     "Industrial Equipment",
     "Truck",
     "Bus",
-    "Other"
+    "Other",
 ]
 
 
-GET_VALID_FOR_VEHICLE_TYPE = [
-    'boat',
-    'atv'
-]
+GET_VALID_FOR_VEHICLE_TYPE = ["boat", "atv"]
 
 
 validated_makes = {}
@@ -48,9 +47,9 @@ validated_makes = {}
 def get_all_makes(vehicle_type: str):
     data = get_json_data_from_api(vehicle_type.lower())
     makes = []
-    for make, make_info in data['makes'].items():
-        if make_info.get('is_valid'):
-            makes.append({make: get_models_for_make(make_info['models'])})
+    for make, make_info in data["makes"].items():
+        if make_info.get("is_valid"):
+            makes.append({make: get_models_for_make(make_info["models"])})
     return makes
 
 
@@ -58,7 +57,7 @@ def get_models_for_make(models: dict) -> list[str]:
     result = []
     for model, model_info in models.items():
         if model not in GET_VALID_FOR_VEHICLE_TYPE:
-            if model_info.get('is_valid') is True:
+            if model_info.get("is_valid") is True:
                 result.append(model)
         else:
             result.append(model)
@@ -94,7 +93,12 @@ def build_csvs():
                 if make_key not in make_id_by_key:
                     make_id_by_key[make_key] = make_next_id
                     make_rows.append(
-                        {"id": make_next_id, "name": make_name, "slug": make_slug, "vehicle_type_id": vt_id}
+                        {
+                            "id": make_next_id,
+                            "name": make_name,
+                            "slug": make_slug,
+                            "vehicle_type_id": vt_id,
+                        }
                     )
                     make_next_id += 1
 
@@ -106,7 +110,12 @@ def build_csvs():
                         continue
                     seen_model_slugs.add(model_slug)
                     model_rows.append(
-                        {"id": model_next_id, "name": model_name, "slug": model_slug, "make_id": make_id}
+                        {
+                            "id": model_next_id,
+                            "name": model_name,
+                            "slug": model_slug,
+                            "make_id": make_id,
+                        }
                     )
                     model_next_id += 1
 
@@ -121,5 +130,5 @@ def build_csvs():
     return df_vehicle_type, df_make, df_model
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     build_csvs()

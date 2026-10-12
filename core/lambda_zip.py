@@ -1,10 +1,9 @@
 import argparse
 import fnmatch
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT = PROJECT_ROOT / "lambda-deployment.zip"
@@ -89,11 +88,16 @@ def create_lambda_zip(
         temporary_path = Path(temporary_file.name)
 
     try:
-        with ZipFile(temporary_path, "w", compression=ZIP_DEFLATED, compresslevel=9) as archive:
-            for directory, directories, filenames in os.walk(root, topdown=True, followlinks=False):
+        with ZipFile(
+            temporary_path, "w", compression=ZIP_DEFLATED, compresslevel=9
+        ) as archive:
+            for directory, directories, filenames in os.walk(
+                root, topdown=True, followlinks=False
+            ):
                 current_directory = Path(directory)
                 directories[:] = [
-                    name for name in directories
+                    name
+                    for name in directories
                     if not (current_directory / name).is_symlink()
                     and not _should_exclude(
                         current_directory / name,

@@ -8,4 +8,4 @@ class SimilarHistoryLots(BaseModel):
     make: str
     model: str | None = None
     year: int | None = None
-    vehicle_type: str | None = 'Automobile'
+    vehicle_type: str | None = "Automobile"

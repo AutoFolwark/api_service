@@ -16,7 +16,6 @@ from aws_lambda_functions.saved_lots_upsert import (
 )
 from database.db.session import engine_async
 
-
 PAGE_SIZE = 5000
 WORKERS = 3
 FETCH_ATTEMPTS = 3
@@ -32,7 +31,9 @@ async def _fetch_all_lot_page(
     attempt = 0
     while True:
         attempt += 1
-        logger.debug("Fetching all-lot page {} (attempt {}/{})", page, attempt, FETCH_ATTEMPTS)
+        logger.debug(
+            "Fetching all-lot page {} (attempt {}/{})", page, attempt, FETCH_ATTEMPTS
+        )
         started_at = time.perf_counter()
         try:
             async with asyncio.timeout(FETCH_TIMEOUT_SECONDS):
@@ -297,7 +298,9 @@ async def _async_lambda_handler() -> dict:
             ),
         ) as http_client:
             api = AuctionApiClient()
-            fetched_count, saved_count = await _fetch_all_lots(api, http_client, save_engine)
+            fetched_count, saved_count = await _fetch_all_lots(
+                api, http_client, save_engine
+            )
             logger.info(
                 "Full lot load complete: {} lots fetched, {} saved",
                 fetched_count,

@@ -13,4 +13,3 @@ class SaleHistoryOut(BaseModel):
     status: str | None = None
     is_buy_now: bool | None = None
     vin: str | None = None
-

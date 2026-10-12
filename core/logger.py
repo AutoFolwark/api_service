@@ -1,18 +1,19 @@
 import asyncio
-import time
-from loguru import logger as loguru_logger
 import json
+import time
 from contextlib import asynccontextmanager
 from functools import wraps
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+from loguru import logger as loguru_logger
 
 
 @asynccontextmanager
 async def async_timer(
-        process_name: str,
-        logger_instance=None,
-        log_start: bool = False,
-        extra_data: Optional[Dict[str, Any]] = None
+    process_name: str,
+    logger_instance=None,
+    log_start: bool = False,
+    extra_data: Optional[Dict[str, Any]] = None,
 ):
     _logger = logger_instance or logger
     _extra = extra_data or {}
@@ -33,7 +34,7 @@ async def async_timer(
             execution_time=execution_time,
             process_name=process_name,
             error_type=type(e).__name__,
-            **_extra
+            **_extra,
         )
         raise
     else:
@@ -44,17 +45,17 @@ async def async_timer(
             f"{process_name} completed in {execution_time:.3f} sec",
             execution_time=execution_time,
             process_name=process_name,
-            **_extra
+            **_extra,
         )
 
 
 class AsyncTimer:
     def __init__(
-            self,
-            process_name: str,
-            logger_instance=None,
-            log_start: bool = False,
-            extra_data: Optional[Dict[str, Any]] = None
+        self,
+        process_name: str,
+        logger_instance=None,
+        log_start: bool = False,
+        extra_data: Optional[Dict[str, Any]] = None,
     ):
         self.process_name = process_name
         self.logger = logger_instance or logger
@@ -78,21 +79,21 @@ class AsyncTimer:
                 execution_time=execution_time,
                 process_name=self.process_name,
                 error_type=exc_type.__name__,
-                **self.extra_data
+                **self.extra_data,
             )
         else:
             self.logger.info(
                 f"{self.process_name} completed in {execution_time:.3f} sec",
                 execution_time=execution_time,
                 process_name=self.process_name,
-                **self.extra_data
+                **self.extra_data,
             )
 
 
 def log_async_execution_time(
-        process_name: Optional[str] = None,
-        logger_instance=None,
-        extra_data: Optional[Dict[str, Any]] = None
+    process_name: Optional[str] = None,
+    logger_instance=None,
+    extra_data: Optional[Dict[str, Any]] = None,
 ):
     def decorator(func):
         if not asyncio.iscoroutinefunction(func):
@@ -101,7 +102,9 @@ def log_async_execution_time(
         @wraps(func)
         async def wrapper(*args, **kwargs):
             _process_name = process_name or f"{func.__module__}.{func.__name__}"
-            async with async_timer(_process_name, logger_instance, extra_data=extra_data):
+            async with async_timer(
+                _process_name, logger_instance, extra_data=extra_data
+            ):
                 return await func(*args, **kwargs)
 
         return wrapper
@@ -116,4 +119,6 @@ def truncate_log_value(value: Any, max_chars: int = 2000) -> str:
     serialized = json.dumps(value, ensure_ascii=False, default=str)
     if len(serialized) <= max_chars:
         return serialized
-    return f"{serialized[:max_chars]}... [truncated; {len(serialized)} characters total]"
+    return (
+        f"{serialized[:max_chars]}... [truncated; {len(serialized)} characters total]"
+    )

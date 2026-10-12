@@ -7,14 +7,24 @@ from typing import Any
 from asyncpg.exceptions import DeadlockDetectedError, LockNotAvailableError
 from loguru import logger
 from pydantic import HttpUrl
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, and_, false, null, or_, text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    Integer,
+    and_,
+    false,
+    null,
+    or_,
+    text,
+)
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from auction_api.types.db_lot import DBUpdateLot
 from database.db.session import AsyncSessionLocal, engine_async
 from database.models.saved_lots import SavedLots
-
 
 MAX_CONCURRENT_SAVES = 3
 SQLITE_MAX_BIND_PARAMETERS = 900
@@ -27,20 +37,22 @@ SAVE_RETRY_DELAY_SECONDS = 5
 STALE_SAVE_SESSION_SECONDS = 120
 JSON_COLUMNS = frozenset({"copart_exterior_360", "link_img_hd", "link_img_small"})
 STRING_COLUMNS = frozenset({"lot_id", "branch_number", "odometer_index", "zip"})
-INTEGER_COLUMNS = frozenset({
-    "site",
-    "salvage_id",
-    "odometer",
-    "price_new",
-    "price_future",
-    "current_bid",
-    "cost_priced",
-    "cost_repair",
-    "year",
-    "cylinders",
-    "location_id",
-    "sort_order",
-})
+INTEGER_COLUMNS = frozenset(
+    {
+        "site",
+        "salvage_id",
+        "odometer",
+        "price_new",
+        "price_future",
+        "current_bid",
+        "cost_priced",
+        "cost_repair",
+        "year",
+        "cylinders",
+        "location_id",
+        "sort_order",
+    }
+)
 FLOAT_COLUMNS = frozenset({"engine_size", "latitude", "longitude"})
 BOOL_COLUMNS = frozenset({"is_buynow", "is_offsite", "is_tbo", "is_title_pending"})
 DATETIME_COLUMNS = frozenset({"auction_date", "timed_auction_close_date", "updated_at"})
@@ -80,7 +92,9 @@ def _select_expr(name: str, column) -> str:
 def _merge_sql(replace: bool) -> str:
     columns_by_name = {column.name: column for column in SavedLots.__table__.columns}
     insert_columns = [*UPSERT_COLUMNS, "is_deleted"]
-    select_exprs = [_select_expr(name, columns_by_name[name]) for name in UPSERT_COLUMNS]
+    select_exprs = [
+        _select_expr(name, columns_by_name[name]) for name in UPSERT_COLUMNS
+    ]
     select_exprs.append("FALSE")
     assignments = [
         f"{_quote_identifier(name)} = EXCLUDED.{_quote_identifier(name)}"
@@ -145,7 +159,9 @@ def create_save_engine(pool_size: int = MAX_CONCURRENT_SAVES) -> AsyncEngine:
                 "statement_timeout": str(SAVE_STATEMENT_TIMEOUT_MS),
                 "lock_timeout": str(SAVE_LOCK_TIMEOUT_MS),
                 # A killed Lambda leaves its transaction open, holding row locks on saved_lots.
-                "idle_in_transaction_session_timeout": str(SAVE_IDLE_IN_TRANSACTION_TIMEOUT_MS),
+                "idle_in_transaction_session_timeout": str(
+                    SAVE_IDLE_IN_TRANSACTION_TIMEOUT_MS
+                ),
             },
         }
     return create_async_engine(engine_async.url, **engine_options)
@@ -168,7 +184,9 @@ def _prepare_lot_values(lot: DBUpdateLot) -> dict[str, Any]:
         raise ValueError("Updated lot is missing lot_id or site")
 
     raw = lot.model_dump(exclude={"id", "created_at"}, mode="python")
-    return {column: _coerce_column(column, raw.get(column)) for column in UPSERT_COLUMNS}
+    return {
+        column: _coerce_column(column, raw.get(column)) for column in UPSERT_COLUMNS
+    }
 
 
 def _prefer_incoming(current: dict[str, Any], incoming: dict[str, Any]) -> bool:
@@ -241,7 +259,9 @@ def records_from_api_items(items: list[dict[str, Any]]) -> list[tuple[Any, ...]]
         current = chosen.get(key)
         if current is not None and not _prefer_updated(current[0], incoming_updated):
             continue
-        record = tuple(_copy_value(column, item.get(column)) for column in UPSERT_COLUMNS)
+        record = tuple(
+            _copy_value(column, item.get(column)) for column in UPSERT_COLUMNS
+        )
         chosen[key] = (incoming_updated, record)
 
     items.clear()
@@ -255,7 +275,7 @@ def records_from_api_items(items: list[dict[str, Any]]) -> list[tuple[Any, ...]]
             record = (
                 *record[:_UPDATED_AT_INDEX],
                 written_at,
-                *record[_UPDATED_AT_INDEX + 1:],
+                *record[_UPDATED_AT_INDEX + 1 :],
             )
         records.append(record)
     return records
@@ -421,7 +441,7 @@ async def _save_lots_sqlite(rows: list[dict[str, Any]], replace: bool) -> int:
         async with session.begin():
             for offset in range(0, len(rows), batch_size):
                 batch = []
-                for row in rows[offset:offset + batch_size]:
+                for row in rows[offset : offset + batch_size]:
                     item = {column: row.get(column) for column in UPSERT_COLUMNS}
                     item["is_deleted"] = False
                     batch.append(item)

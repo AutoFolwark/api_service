@@ -11,5 +11,3 @@ class VinOrLotIn(SiteIn):
     @classmethod
     def validate_site(cls, v):
         return v
-
-

@@ -2,13 +2,12 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import JSON, DateTime, Index, String, func
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 
 from database.models import Base
 
 
 class SavedLots(Base):
-
     __tablename__ = "saved_lots"
     __table_args__ = (
         Index("ix_saved_lots_lot_id_site", "lot_id", "site", unique=True),
@@ -83,7 +82,9 @@ class SavedLots(Base):
     airbag: Mapped[Optional[str]]
     tenant: Mapped[Optional[str]]
     odometer_index: Mapped[Optional[str]]
-    timed_auction_close_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    timed_auction_close_date: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
     is_tbo: Mapped[Optional[bool]]
     is_title_pending: Mapped[Optional[bool]]
     zip: Mapped[Optional[str]]
@@ -91,7 +92,9 @@ class SavedLots(Base):
     sort_order: Mapped[Optional[int]]
     copart_yard_name: Mapped[Optional[str]]
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
