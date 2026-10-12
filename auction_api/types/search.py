@@ -78,7 +78,10 @@ class CommonSearchParams(SiteIn):
     status: list[str] | None = Field(None, description="Vehicle statuses")
 
     drive: list[str] | None = Field(None, description="Drive types")
+    color: str | None = Field(None, description="Exterior color")
     damage_pr: list[str] | None = Field(None, description="Primary damage types")
+    engine_size_from: float | None = Field(None, ge=0, description="Engine size from, liters")
+    engine_size_to: float | None = Field(None, ge=0, description="Engine size to, liters")
 
     document: list[str] | None = Field(None, description="Document types")
     odometer_min: int | None = Field(None, ge=0, description="Minimum odometer")
