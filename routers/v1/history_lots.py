@@ -10,11 +10,7 @@ from core.logger import logger
 from database.db.session import get_async_db
 from dependencies.auction_api_service import get_auction_api_service
 from request_schemas.lot import LotByIDIn, LotByVINIn
-from services.search_query_decoder import (
-    apply_decoded_search,
-    decode_search_query,
-    require_decoded_search,
-)
+from services.search_query_decoder import apply_decoded_search, decode_search_query
 from services.transform_slugs import transform_slugs
 
 history_cars_router = APIRouter()
@@ -66,7 +62,6 @@ async def get_history_lots(
         decoded = await decode_search_query(
             data.search, db, vehicle_type=data.vehicle_type
         )
-        require_decoded_search(decoded)
         apply_decoded_search(data, decoded)
 
     data = await transform_slugs(data, db)

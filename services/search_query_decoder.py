@@ -1,7 +1,6 @@
 import re
 from datetime import UTC, datetime
 
-from rfc9457 import NotFoundProblem
 from slugify import slugify
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -239,12 +238,6 @@ async def decode_search_query(
         model_slug=chosen_model.slug if chosen_model is not None else None,
         unrecognized=unrecognized,
     )
-
-
-def require_decoded_search(decoded: DecodedSearch) -> None:
-    """404 when the text matched no year, make, or model. Partial matches still pass."""
-    if decoded.year is None and decoded.make is None and decoded.model is None:
-        raise NotFoundProblem("Could not decode year, make or model from search query")
 
 
 def apply_decoded_search(params: CommonSearchParams, decoded: DecodedSearch) -> None:

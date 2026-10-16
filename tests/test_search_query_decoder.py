@@ -1,7 +1,5 @@
 import asyncio
 
-import pytest
-from rfc9457 import NotFoundProblem
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -13,7 +11,6 @@ from database.models.vehicle_type import VehicleType
 from services.search_query_decoder import (
     apply_decoded_search,
     decode_search_query,
-    require_decoded_search,
 )
 
 
@@ -112,7 +109,6 @@ def test_model_infers_make():
 def test_partial_match_lists_unrecognized_words():
     async def _case(session: AsyncSession):
         decoded = await decode_search_query("blue bmw 2010", session)
-        require_decoded_search(decoded)
         assert decoded.year == 2010
         assert decoded.make == "BMW"
         assert decoded.model is None
@@ -121,14 +117,13 @@ def test_partial_match_lists_unrecognized_words():
     _run(_case)
 
 
-def test_unrecognized_query_raises_not_found():
+def test_unrecognized_query_decodes_to_empty():
     async def _case(session: AsyncSession):
         decoded = await decode_search_query("asdf qwerty", session)
         assert decoded.year is None
         assert decoded.make is None
         assert decoded.model is None
-        with pytest.raises(NotFoundProblem):
-            require_decoded_search(decoded)
+        assert decoded.unrecognized == ["asdf", "qwerty"]
 
     _run(_case)
 
