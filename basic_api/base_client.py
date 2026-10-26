@@ -28,6 +28,17 @@ class BaseClient(ABC):
     def _build_url(self, url: str) -> str:
         return f"{self.base_url.rstrip('/')}/{url.lstrip('/')}"
 
+    @staticmethod
+    def _flatten_query_params(payload: dict) -> list[tuple[str, Any]]:
+        """Repeat list values as separate query params for the auction API."""
+        params: list[tuple[str, Any]] = []
+        for key, value in payload.items():
+            if isinstance(value, (list, tuple)):
+                params.extend((key, item) for item in value)
+            else:
+                params.append((key, value))
+        return params
+
     async def _make_request(self, method: str, url: str, **kwargs) -> httpx.Response:
         headers = {self.header_name: self.api_key}
         client = self._http_client
@@ -71,7 +82,7 @@ class BaseClient(ABC):
         logger.debug(f"Request payload: {truncate_log_value(payload)}, url: {url}")
 
         if schema.method == "GET":
-            response = await self._make_request("GET", url, params=payload)
+            response = await self._make_request("GET", url, params=self._flatten_query_params(payload))
         elif schema.method == "POST":
             response = await self._make_request("POST", url, json=payload)
         else:
