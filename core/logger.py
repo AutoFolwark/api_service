@@ -30,7 +30,7 @@ async def async_timer(
         execution_time = end_time - start_time
 
         _logger.error(
-            f"{process_name} failed after {execution_time:.3f} sec: {str(e)}",
+            f"{process_name} failed after {execution_time:.3f} sec: {format_exception(e)}",
             execution_time=execution_time,
             process_name=process_name,
             error_type=type(e).__name__,
@@ -75,7 +75,8 @@ class AsyncTimer:
 
         if exc_type:
             self.logger.error(
-                f"{self.process_name} failed after {execution_time:.3f} sec: {str(exc_val)}",
+                f"{self.process_name} failed after {execution_time:.3f} sec: "
+                f"{format_exception(exc_val)}",
                 execution_time=execution_time,
                 process_name=self.process_name,
                 error_type=exc_type.__name__,
@@ -113,6 +114,14 @@ def log_async_execution_time(
 
 
 logger = loguru_logger
+
+
+def format_exception(exc: BaseException) -> str:
+    detail = getattr(exc, "detail", None)
+    text = str(exc)
+    if isinstance(detail, str) and detail and detail not in text:
+        return f"{text}: {detail}"
+    return text
 
 
 def truncate_log_value(value: Any, max_chars: int = 2000) -> str:

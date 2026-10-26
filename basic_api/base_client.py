@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, List, Type, TypeVar
 
@@ -16,6 +17,14 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound=BaseModel)
 MAX_ERROR_BODY_LOG_CHARS = 1000
+REQUEST_ATTEMPTS = 3
+REQUEST_RETRY_DELAY_SECONDS = 1.0
+RETRYABLE_REQUEST_ERRORS = (
+    httpx.NetworkError,
+    httpx.TimeoutException,
+    httpx.RemoteProtocolError,
+    httpx.DecodingError,
+)
 
 
 class BaseClient(ABC):
@@ -46,24 +55,86 @@ class BaseClient(ABC):
         if client is None:
             client = httpx.AsyncClient(timeout=10)
         try:
-            return await client.request(method, url, headers=headers, **kwargs)
-        except httpx.HTTPError as e:
-            logger.error(
-                f"Request to API Failed",
-                exc_info=e,
-                extra={
-                    "data": {
-                        "url": url,
-                        "headers": truncate_log_value(headers),
-                        "kwargs": truncate_log_value(kwargs),
-                        "error": truncate_log_value(str(e)),
-                    }
-                },
-            )
-            raise BadRequestProblem(detail="Request to API Failed") from e
+            for attempt in range(1, REQUEST_ATTEMPTS + 1):
+                try:
+                    response = await client.request(
+                        method, url, headers=headers, **kwargs
+                    )
+                except RETRYABLE_REQUEST_ERRORS as exc:
+                    await self._handle_retryable_request_error(
+                        exc, method, url, attempt, kwargs
+                    )
+                    continue
+                except httpx.HTTPError as exc:
+                    detail = self._request_failure_detail(
+                        method, url, attempt, kwargs, exc=exc, retrying=False
+                    )
+                    logger.error(detail)
+                    raise BadRequestProblem(detail=detail) from exc
+
+                if response.is_server_error and attempt < REQUEST_ATTEMPTS:
+                    detail = self._request_failure_detail(
+                        method,
+                        url,
+                        attempt,
+                        kwargs,
+                        response=response,
+                        retrying=True,
+                    )
+                    logger.warning(detail)
+                    await response.aclose()
+                    await asyncio.sleep(REQUEST_RETRY_DELAY_SECONDS * attempt)
+                    continue
+                return response
+            raise RuntimeError(f"Request retry loop exhausted for {method} {url}")
         finally:
             if close_client:
                 await client.aclose()
+
+    async def _handle_retryable_request_error(
+        self,
+        exc: httpx.HTTPError,
+        method: str,
+        url: str,
+        attempt: int,
+        kwargs: dict,
+    ) -> None:
+        retrying = attempt < REQUEST_ATTEMPTS
+        detail = self._request_failure_detail(
+            method, url, attempt, kwargs, exc=exc, retrying=retrying
+        )
+        if not retrying:
+            logger.error(detail)
+            raise BadRequestProblem(detail=detail) from exc
+        logger.warning(detail)
+        await asyncio.sleep(REQUEST_RETRY_DELAY_SECONDS * attempt)
+
+    def _request_failure_detail(
+        self,
+        method: str,
+        url: str,
+        attempt: int,
+        kwargs: dict,
+        exc: httpx.HTTPError | None = None,
+        response: httpx.Response | None = None,
+        retrying: bool = False,
+    ) -> str:
+        action = "retrying" if retrying else "not retrying"
+        reason = f"{type(exc).__name__}: {exc}" if exc is not None else ""
+        if response is not None:
+            preview = (response.content or b"")[:MAX_ERROR_BODY_LOG_CHARS].decode(
+                "utf-8", errors="replace"
+            )
+            content_type = response.headers.get("content-type", "")
+            reason = (
+                f"HTTP {response.status_code} content-type={content_type!r} "
+                f"body={preview!r}"
+            )
+        return (
+            f"Request to API failed on {method} {url} "
+            f"attempt {attempt}/{REQUEST_ATTEMPTS} ({action}): {reason}; "
+            f"request={truncate_log_value(kwargs)}"
+        )
 
     @log_async_execution_time("Request to external API")
     async def request_with_schema(
@@ -82,7 +153,9 @@ class BaseClient(ABC):
         logger.debug(f"Request payload: {truncate_log_value(payload)}, url: {url}")
 
         if schema.method == "GET":
-            response = await self._make_request("GET", url, params=self._flatten_query_params(payload))
+            response = await self._make_request(
+                "GET", url, params=self._flatten_query_params(payload)
+            )
         elif schema.method == "POST":
             response = await self._make_request("POST", url, json=payload)
         else:
@@ -103,17 +176,20 @@ class BaseClient(ABC):
         )
 
         if response.status_code != httpx.codes.OK:
+            response_preview = (response.content or b"")[
+                :MAX_ERROR_BODY_LOG_CHARS
+            ].decode("utf-8", errors="replace")
             logger.warning(
-                f"Request failed, lot not found or smth",
+                f"Request to API returned status {response.status_code} for {url}; "
+                f"content-type={response.headers.get('content-type', '')!r}; "
+                f"body={response_preview!r}",
                 extra={
                     "data": {
                         "url": url,
                         "payload": truncate_log_value(payload),
                         "status_code": response.status_code,
                         "response_content_length": len(response.content or b""),
-                        "response_preview": (response.content or b"")[
-                            :MAX_ERROR_BODY_LOG_CHARS
-                        ].decode("utf-8", errors="replace"),
+                        "response_preview": response_preview,
                     }
                 },
             )
