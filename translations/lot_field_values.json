@@ -1,0 +1,546 @@
+{
+  "keys": {
+    "Yes": {
+      "en": "Yes",
+      "pl": "Tak",
+      "uk": "Так",
+      "cs": "Ano",
+      "de": "Ja",
+      "sl": "Da"
+    },
+    "No": {
+      "en": "No",
+      "pl": "Nie",
+      "uk": "Ні",
+      "cs": "Ne",
+      "de": "Nein",
+      "sl": "Ne"
+    }
+  },
+  "odobrand": {
+    "actual": {
+      "en": "actual",
+      "pl": "rzeczywisty",
+      "uk": "фактичний",
+      "cs": "skutečný",
+      "de": "tatsächlich",
+      "sl": "dejanski"
+    },
+    "not_actual": {
+      "en": "Not actual",
+      "pl": "Niezgodny z rzeczywistym",
+      "uk": "Не відповідає дійсності",
+      "cs": "Neodpovídá skutečnosti",
+      "de": "Kein tatsächlicher Stand",
+      "sl": "Ni dejansko stanje"
+    },
+    "exempt": {
+      "en": "exempt",
+      "pl": "zwolniony",
+      "uk": "звільнений",
+      "cs": "osvobozeno",
+      "de": "ausgenommen",
+      "sl": "izvzeto"
+    },
+    "exceeds_mechanical_limits": {
+      "en": "Exceeds mechanical limits",
+      "pl": "Przekracza zakres licznika",
+      "uk": "Перевищує межу лічильника",
+      "cs": "Překračuje rozsah tachometru",
+      "de": "Mechanische Grenze überschritten",
+      "sl": "Presega obseg števca"
+    }
+  },
+  "fuel": {
+    "Diesel": {
+      "en": "Diesel",
+      "pl": "Diesel",
+      "uk": "Дизель",
+      "cs": "Nafta",
+      "de": "Diesel",
+      "sl": "Dizel"
+    },
+    "Electric": {
+      "en": "Electric",
+      "pl": "Elektryczny",
+      "uk": "Електричний",
+      "cs": "Elektrický",
+      "de": "Elektrisch",
+      "sl": "Električni"
+    },
+    "Flexible Fuel": {
+      "en": "Flexible Fuel",
+      "pl": "Flex-fuel",
+      "uk": "Flex-fuel",
+      "cs": "Flex-fuel",
+      "de": "Flex-Fuel",
+      "sl": "Flex-fuel"
+    },
+    "Gasoline": {
+      "en": "Gasoline",
+      "pl": "Benzyna",
+      "uk": "Бензин",
+      "cs": "Benzín",
+      "de": "Benzin",
+      "sl": "Bencin"
+    },
+    "Hybrid": {
+      "en": "Hybrid",
+      "pl": "Hybryda",
+      "uk": "Гібрид",
+      "cs": "Hybrid",
+      "de": "Hybrid",
+      "sl": "Hibrid"
+    },
+    "Other": {
+      "en": "Other",
+      "pl": "Inne",
+      "uk": "Інше",
+      "cs": "Jiné",
+      "de": "Sonstiges",
+      "sl": "Drugo"
+    },
+    "Unknown": {
+      "en": "Unknown",
+      "pl": "Nieznane",
+      "uk": "Невідомо",
+      "cs": "Neznámé",
+      "de": "Unbekannt",
+      "sl": "Neznano"
+    }
+  },
+  "drive": {
+    "All Wheel Drive": {
+      "en": "All Wheel Drive",
+      "pl": "Napęd na wszystkie koła",
+      "uk": "Повний привід",
+      "cs": "Pohon všech kol",
+      "de": "Allradantrieb",
+      "sl": "Pogon na vsa kolesa"
+    },
+    "Front Wheel Drive": {
+      "en": "Front Wheel Drive",
+      "pl": "Napęd na przednie koła",
+      "uk": "Передній привід",
+      "cs": "Pohon předních kol",
+      "de": "Vorderradantrieb",
+      "sl": "Pogon na sprednji kolesi"
+    },
+    "Rear Wheel Drive": {
+      "en": "Rear Wheel Drive",
+      "pl": "Napęd na tylne koła",
+      "uk": "Задній привід",
+      "cs": "Pohon zadních kol",
+      "de": "Hinterradantrieb",
+      "sl": "Pogon na zadnji kolesi"
+    }
+  },
+  "transmission": {
+    "Automatic": {
+      "en": "Automatic",
+      "pl": "Automatyczna",
+      "uk": "Автоматична",
+      "cs": "Automatická",
+      "de": "Automatik",
+      "sl": "Avtomatski"
+    },
+    "Manual": {
+      "en": "Manual",
+      "pl": "Manualna",
+      "uk": "Механічна",
+      "cs": "Manuální",
+      "de": "Schaltgetriebe",
+      "sl": "Ročni"
+    },
+    "Undefined": {
+      "en": "Undefined",
+      "pl": "Nieokreślona",
+      "uk": "Невизначена",
+      "cs": "Neurčená",
+      "de": "Undefiniert",
+      "sl": "Nedoločen"
+    }
+  },
+  "color": {
+    "silver": {
+      "en": "silver",
+      "pl": "srebrny",
+      "uk": "сріблястий",
+      "cs": "stříbrná",
+      "de": "Silber",
+      "sl": "srebrna"
+    },
+    "purple": {
+      "en": "purple",
+      "pl": "fioletowy",
+      "uk": "фіолетовий",
+      "cs": "fialová",
+      "de": "Lila",
+      "sl": "vijolična"
+    },
+    "orange": {
+      "en": "orange",
+      "pl": "pomarańczowy",
+      "uk": "помаранчевий",
+      "cs": "oranžová",
+      "de": "Orange",
+      "sl": "oranžna"
+    },
+    "green": {
+      "en": "green",
+      "pl": "zielony",
+      "uk": "зелений",
+      "cs": "zelená",
+      "de": "Grün",
+      "sl": "zelena"
+    },
+    "red": {
+      "en": "red",
+      "pl": "czerwony",
+      "uk": "червоний",
+      "cs": "červená",
+      "de": "Rot",
+      "sl": "rdeča"
+    },
+    "gold": {
+      "en": "gold",
+      "pl": "złoty",
+      "uk": "золотий",
+      "cs": "zlatá",
+      "de": "Gold",
+      "sl": "zlata"
+    },
+    "charcoal": {
+      "en": "charcoal",
+      "pl": "antracytowy",
+      "uk": "антрацитовий",
+      "cs": "antracitová",
+      "de": "Anthrazit",
+      "sl": "antracitna"
+    },
+    "brown": {
+      "en": "brown",
+      "pl": "brązowy",
+      "uk": "коричневий",
+      "cs": "hnědá",
+      "de": "Braun",
+      "sl": "rjava"
+    },
+    "grey": {
+      "en": "grey",
+      "pl": "szary",
+      "uk": "сірий",
+      "cs": "šedá",
+      "de": "Grau",
+      "sl": "siva"
+    },
+    "turquoise": {
+      "en": "turquoise",
+      "pl": "turkusowy",
+      "uk": "бірюзовий",
+      "cs": "tyrkysová",
+      "de": "Türkis",
+      "sl": "turkizna"
+    },
+    "blue": {
+      "en": "blue",
+      "pl": "niebieski",
+      "uk": "синій",
+      "cs": "modrá",
+      "de": "Blau",
+      "sl": "modra"
+    },
+    "bronze": {
+      "en": "bronze",
+      "pl": "brąz",
+      "uk": "бронзовий",
+      "cs": "bronzová",
+      "de": "Bronze",
+      "sl": "bronasta"
+    },
+    "white": {
+      "en": "white",
+      "pl": "biały",
+      "uk": "білий",
+      "cs": "bílá",
+      "de": "Weiß",
+      "sl": "bela"
+    },
+    "cream": {
+      "en": "cream",
+      "pl": "kremowy",
+      "uk": "кремовий",
+      "cs": "krémová",
+      "de": "Creme",
+      "sl": "kremna"
+    },
+    "black": {
+      "en": "black",
+      "pl": "czarny",
+      "uk": "чорний",
+      "cs": "černá",
+      "de": "Schwarz",
+      "sl": "črna"
+    },
+    "yellow": {
+      "en": "yellow",
+      "pl": "żółty",
+      "uk": "жовтий",
+      "cs": "žlutá",
+      "de": "Gelb",
+      "sl": "rumena"
+    },
+    "beige": {
+      "en": "beige",
+      "pl": "beżowy",
+      "uk": "бежевий",
+      "cs": "béžová",
+      "de": "Beige",
+      "sl": "bež"
+    },
+    "pink": {
+      "en": "pink",
+      "pl": "różowy",
+      "uk": "рожевий",
+      "cs": "růžová",
+      "de": "Rosa",
+      "sl": "roza"
+    },
+    "two_colors": {
+      "en": "Two colors",
+      "pl": "Dwa kolory",
+      "uk": "Два кольори",
+      "cs": "Dvě barvy",
+      "de": "Zwei Farben",
+      "sl": "Dve barvi"
+    },
+    "other": {
+      "en": "other",
+      "pl": "inny",
+      "uk": "інший",
+      "cs": "jiná",
+      "de": "Sonstige",
+      "sl": "druga"
+    }
+  },
+  "status": {
+    "Run & Drive": {
+      "en": "Run & Drive",
+      "pl": "Odpala i jeździ",
+      "uk": "Заводиться і їде",
+      "cs": "Startuje a jede",
+      "de": "Startet und fährt",
+      "sl": "Se zažene in vozi"
+    },
+    "STARTS": {
+      "en": "STARTS",
+      "pl": "Odpala",
+      "uk": "Заводиться",
+      "cs": "Startuje",
+      "de": "Startet",
+      "sl": "Se zažene"
+    },
+    "STATIONARY": {
+      "en": "STATIONARY",
+      "pl": "Nie uruchamia się",
+      "uk": "Не заводиться",
+      "cs": "Nestartuje",
+      "de": "Startet nicht",
+      "sl": "Se ne zažene"
+    },
+    "CAN'T TEST": {
+      "en": "CAN'T TEST",
+      "pl": "Nie można sprawdzić",
+      "uk": "Неможливо перевірити",
+      "cs": "Nelze otestovat",
+      "de": "Nicht prüfbar",
+      "sl": "Ni mogoče preizkusiti"
+    },
+    "Unknown": {
+      "en": "Unknown",
+      "pl": "Nieznany",
+      "uk": "Невідомо",
+      "cs": "Neznámý",
+      "de": "Unbekannt",
+      "sl": "Neznano"
+    }
+  },
+  "body_type": {
+    "sedan": {
+      "en": "sedan",
+      "pl": "sedan",
+      "uk": "седан",
+      "cs": "sedan",
+      "de": "Limousine",
+      "sl": "limuzina"
+    },
+    "wagon": {
+      "en": "wagon",
+      "pl": "kombi",
+      "uk": "універсал",
+      "cs": "kombi",
+      "de": "Kombi",
+      "sl": "karavan"
+    },
+    "coupe": {
+      "en": "coupe",
+      "pl": "coupé",
+      "uk": "купе",
+      "cs": "kupé",
+      "de": "Coupé",
+      "sl": "kupe"
+    },
+    "pickup": {
+      "en": "pickup",
+      "pl": "pickup",
+      "uk": "пікап",
+      "cs": "pickup",
+      "de": "Pickup",
+      "sl": "pickup"
+    },
+    "suv": {
+      "en": "suv",
+      "pl": "SUV",
+      "uk": "SUV",
+      "cs": "SUV",
+      "de": "SUV",
+      "sl": "SUV"
+    },
+    "cabrio": {
+      "en": "cabrio",
+      "pl": "kabriolet",
+      "uk": "кабріолет",
+      "cs": "kabriolet",
+      "de": "Cabrio",
+      "sl": "kabriolet"
+    },
+    "van": {
+      "en": "van",
+      "pl": "van",
+      "uk": "вен",
+      "cs": "van",
+      "de": "Van",
+      "sl": "van"
+    },
+    "furgon": {
+      "en": "Panel van",
+      "pl": "furgon",
+      "uk": "фургон",
+      "cs": "furgon",
+      "de": "Kastenwagen",
+      "sl": "furgon"
+    },
+    "hatchback": {
+      "en": "hatchback",
+      "pl": "hatchback",
+      "uk": "хетчбек",
+      "cs": "hatchback",
+      "de": "Schrägheck",
+      "sl": "kombilimuzina"
+    },
+    "roadster": {
+      "en": "roadster",
+      "pl": "roadster",
+      "uk": "родстер",
+      "cs": "roadster",
+      "de": "Roadster",
+      "sl": "roadster"
+    },
+    "limousine": {
+      "en": "limousine",
+      "pl": "limuzyna",
+      "uk": "лімузин",
+      "cs": "limuzína",
+      "de": "Stretch-Limousine",
+      "sl": "podaljšana limuzina"
+    },
+    "truck": {
+      "en": "truck",
+      "pl": "ciężarówka",
+      "uk": "вантажівка",
+      "cs": "nákladní vůz",
+      "de": "Lkw",
+      "sl": "tovornjak"
+    },
+    "bike": {
+      "en": "bike",
+      "pl": "motocykl",
+      "uk": "мотоцикл",
+      "cs": "motorka",
+      "de": "Motorrad",
+      "sl": "motor"
+    },
+    "sport_bike": {
+      "en": "Sport bike",
+      "pl": "Sportowy motocykl",
+      "uk": "Спортбайк",
+      "cs": "Sportovní motorka",
+      "de": "Sportmotorrad",
+      "sl": "Športni motor"
+    },
+    "roadster_bike": {
+      "en": "Roadster bike",
+      "pl": "Motocykl roadster",
+      "uk": "Мотоцикл родстер",
+      "cs": "Motocykl roadster",
+      "de": "Roadster-Motorrad",
+      "sl": "Motor roadster"
+    },
+    "industrial": {
+      "en": "industrial",
+      "pl": "Pojazd przemysłowy",
+      "uk": "Промислова техніка",
+      "cs": "Průmyslové vozidlo",
+      "de": "Industriefahrzeug",
+      "sl": "Industrijsko vozilo"
+    },
+    "bus": {
+      "en": "bus",
+      "pl": "autobus",
+      "uk": "автобус",
+      "cs": "autobus",
+      "de": "Bus",
+      "sl": "avtobus"
+    },
+    "liftback": {
+      "en": "liftback",
+      "pl": "liftback",
+      "uk": "ліфтбек",
+      "cs": "liftback",
+      "de": "Liftback",
+      "sl": "liftback"
+    },
+    "enduro_bike": {
+      "en": "Enduro bike",
+      "pl": "Enduro",
+      "uk": "Ендуро",
+      "cs": "Enduro",
+      "de": "Enduro",
+      "sl": "Enduro"
+    },
+    "hearse": {
+      "en": "hearse",
+      "pl": "karawan",
+      "uk": "катафалк",
+      "cs": "pohřební vůz",
+      "de": "Leichenwagen",
+      "sl": "pogrebni avto"
+    },
+    "fire_truck": {
+      "en": "Fire truck",
+      "pl": "Wóz strażacki",
+      "uk": "Пожежна машина",
+      "cs": "Hasičský vůz",
+      "de": "Feuerwehrfahrzeug",
+      "sl": "Gasilsko vozilo"
+    },
+    "other": {
+      "en": "other",
+      "pl": "inny",
+      "uk": "інший",
+      "cs": "jiné",
+      "de": "Sonstiges",
+      "sl": "drugo"
+    }
+  }
+}

@@ -6,6 +6,7 @@ from core.logger import logger
 from dependencies.auction_api_service import get_auction_api_service
 from schemas.similar_archived_sales import SimilarArchivedSalesPricesOut
 from schemas.similar_history_lots import SimilarHistoryLots
+from services.field_translations import get_locale, translate_lot_response
 
 similar_sales_router = APIRouter()
 
@@ -27,12 +28,14 @@ def _build_history_search_params(data: SimilarHistoryLots) -> HistorySearchParam
 async def get_similar_sales(
     data: SimilarHistoryLots = Query(...),
     api: AuctionApiClient = Depends(get_auction_api_service),
+    locale: str = Depends(get_locale),
 ):
     params = _build_history_search_params(data)
     logger.debug(
         "New request to get many history lots", extra={"data": params.model_dump()}
     )
-    return await api.request_with_schema(AuctionApiClient.GET_HISTORY_LOTS, params)
+    result = await api.request_with_schema(AuctionApiClient.GET_HISTORY_LOTS, params)
+    return translate_lot_response(result, locale)
 
 
 @similar_sales_router.get("/prices", response_model=SimilarArchivedSalesPricesOut)

@@ -15,6 +15,7 @@ from database.crud.vehicle_type import VehicleTypeService
 from database.db.session import get_async_db
 from database.schemas.filters import FilterRead
 from schemas.filters import AllFiltersOut
+from services.field_translations import get_locale, translate_filters
 
 filters_router = APIRouter()
 
@@ -25,6 +26,7 @@ filters_router = APIRouter()
 @cache(expire=60 * 360, key_builder=default_key_builder)
 async def filters(
     db: AsyncSession = Depends(get_async_db),
+    locale: str = Depends(get_locale),
 ):
     damage_service = DamageService(db)
     document_service = DocumentService(db)
@@ -33,31 +35,34 @@ async def filters(
     transmission_service = TransmissionService(db)
     vehicle_type_service = VehicleTypeService(db)
 
-    return AllFiltersOut(
-        damage=[
-            FilterRead.model_validate(filter_obj)
-            for filter_obj in await damage_service.get_all_sorted("name")
-        ],
-        document=[
-            FilterRead.model_validate(filter_obj)
-            for filter_obj in await document_service.get_all_sorted("name")
-        ],
-        drive=[
-            FilterRead.model_validate(filter_obj)
-            for filter_obj in await drive_service.get_all_sorted("name")
-        ],
-        status=[
-            FilterRead.model_validate(filter_obj)
-            for filter_obj in await status_service.get_all_sorted("name")
-        ],
-        transmission=[
-            FilterRead.model_validate(filter_obj)
-            for filter_obj in await transmission_service.get_all_sorted("name")
-        ],
-        vehicle_type=[
-            FilterRead.model_validate(filter_obj)
-            for filter_obj in await vehicle_type_service.get_all_sorted("name")
-        ],
+    return translate_filters(
+        AllFiltersOut(
+            damage=[
+                FilterRead.model_validate(filter_obj)
+                for filter_obj in await damage_service.get_all_sorted("name")
+            ],
+            document=[
+                FilterRead.model_validate(filter_obj)
+                for filter_obj in await document_service.get_all_sorted("name")
+            ],
+            drive=[
+                FilterRead.model_validate(filter_obj)
+                for filter_obj in await drive_service.get_all_sorted("name")
+            ],
+            status=[
+                FilterRead.model_validate(filter_obj)
+                for filter_obj in await status_service.get_all_sorted("name")
+            ],
+            transmission=[
+                FilterRead.model_validate(filter_obj)
+                for filter_obj in await transmission_service.get_all_sorted("name")
+            ],
+            vehicle_type=[
+                FilterRead.model_validate(filter_obj)
+                for filter_obj in await vehicle_type_service.get_all_sorted("name")
+            ],
+        ),
+        locale,
     )
 
 

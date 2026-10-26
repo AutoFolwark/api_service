@@ -18,6 +18,7 @@ from database.models.saved_lots import SavedLots
 from dependencies.auction_api_service import get_auction_api_service
 from request_schemas.lot import CurrentBidOut, LotByIDIn
 from schemas.vin_or_lot import VinOrLotIn
+from services.field_translations import get_locale, translate_lot_response
 from services.search_query_decoder import apply_decoded_search, decode_search_query
 from services.transform_slugs import transform_slugs
 
@@ -68,6 +69,7 @@ async def get_by_lot_id_or_vin(
     data: VinOrLotIn = Query(...),
     api: AuctionApiClient = Depends(get_auction_api_service),
     db: AsyncSession = Depends(get_async_db),
+    locale: str = Depends(get_locale),
 ):
     logger.debug(
         "New request to get lot by vin or lot",
@@ -78,12 +80,14 @@ async def get_by_lot_id_or_vin(
     vin_or_lot = data.vin_or_lot.replace(" ", "").upper()
     lots = await _get_lots_from_db(db, data.site, vin_or_lot)
     if lots is not None:
-        return lots
+        return translate_lot_response(lots, locale)
 
     logger.debug(
         "Lot not found in db, requesting auction api", extra={"vin_or_lot": vin_or_lot}
     )
-    return await get_lot_vin_or_lot_id(api, data.site, vin_or_lot)
+    return translate_lot_response(
+        await get_lot_vin_or_lot_id(api, data.site, vin_or_lot), locale
+    )
 
 
 @cars_router.get(
@@ -109,6 +113,7 @@ async def get_current_lots(
     api: AuctionApiClient = Depends(get_auction_api_service),
     db: AsyncSession = Depends(get_async_db),
     search_params: CurrentSearchParams = Query(...),
+    locale: str = Depends(get_locale),
 ):
     decoded = None
     if search_params.search:
@@ -128,4 +133,4 @@ async def get_current_lots(
     )
     result = await api.request_with_schema(api.GET_CURRENT_LOTS, data)
     result.decoded_search = decoded
-    return result
+    return translate_lot_response(result, locale)

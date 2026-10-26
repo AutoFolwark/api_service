@@ -10,6 +10,7 @@ from core.logger import logger
 from database.db.session import get_async_db
 from dependencies.auction_api_service import get_auction_api_service
 from request_schemas.lot import LotByIDIn, LotByVINIn
+from services.field_translations import get_locale, translate_lot_response
 from services.search_query_decoder import apply_decoded_search, decode_search_query
 from services.transform_slugs import transform_slugs
 
@@ -23,12 +24,16 @@ history_cars_router = APIRouter()
 async def get_history_by_vin(
     data: LotByVINIn = Query(...),
     api: AuctionApiClient = Depends(get_auction_api_service),
+    locale: str = Depends(get_locale),
 ):
     logger.debug(
         "New request to get history lot by vin",
         extra={"data": data.model_dump(mode="json")},
     )
-    return await api.request_with_schema(AuctionApiClient.GET_LOT_HISTORY_BY_VIN, data)
+    result = await api.request_with_schema(
+        AuctionApiClient.GET_LOT_HISTORY_BY_VIN, data
+    )
+    return translate_lot_response(result, locale)
 
 
 @history_cars_router.get(
@@ -38,14 +43,16 @@ async def get_history_by_vin(
 async def get_history_by_vin(
     data: LotByIDIn = Query(...),
     api: AuctionApiClient = Depends(get_auction_api_service),
+    locale: str = Depends(get_locale),
 ):
     logger.debug(
         "New request to get history lot by lot id",
         extra={"data": data.model_dump(mode="json")},
     )
-    return await api.request_with_schema(
+    result = await api.request_with_schema(
         AuctionApiClient.GET_LOT_HISTORY_BY_ID, data, lot_id=data.lot_id
     )
+    return translate_lot_response(result, locale)
 
 
 @history_cars_router.get(
@@ -56,6 +63,7 @@ async def get_history_lots(
     data: HistorySearchParams = Query(...),
     db: AsyncSession = Depends(get_async_db),
     api: AuctionApiClient = Depends(get_auction_api_service),
+    locale: str = Depends(get_locale),
 ):
     decoded = None
     if data.search:
@@ -71,4 +79,4 @@ async def get_history_lots(
     )
     result = await api.request_with_schema(AuctionApiClient.GET_HISTORY_LOTS, data)
     result.decoded_search = decoded
-    return result
+    return translate_lot_response(result, locale)
