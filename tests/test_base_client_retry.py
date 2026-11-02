@@ -1,8 +1,10 @@
 import asyncio
+from types import SimpleNamespace
 
 import httpx
 import pytest
-from rfc9457 import BadRequestProblem
+from pydantic import BaseModel
+from rfc9457 import BadRequestProblem, NotFoundProblem
 
 from basic_api.base_client import REQUEST_ATTEMPTS, BaseClient
 from basic_api.types import BaseClientIn
@@ -120,6 +122,42 @@ def test_does_not_retry_non_request_exception():
         _run(client._make_request("GET", "https://api.example.test/cars"))
 
     assert http.calls == 1
+
+
+class _Query(BaseModel):
+    page: int = 1
+
+
+def test_logs_json_error_body_without_format_error():
+    client, http = _client(
+        [
+            httpx.Response(
+                400,
+                content=b'{"message":"bad request"}',
+                headers={"content-type": "application/json"},
+            )
+        ]
+    )
+    schema = SimpleNamespace(method="GET", endpoint="lots")
+
+    with pytest.raises(NotFoundProblem):
+        _run(client.request_with_schema(schema, _Query()))
+
+    assert http.calls == 1
+
+
+def test_logs_json_server_error_body_without_format_error():
+    client, http = _client(
+        [
+            httpx.Response(503, content=b'{"message":"unavailable"}'),
+            httpx.Response(200, json={"ok": True}),
+        ]
+    )
+
+    response = _run(client._make_request("GET", "https://api.example.test/cars"))
+
+    assert response.status_code == 200
+    assert http.calls == 2
 
 
 def test_does_not_retry_non_transport_http_error():

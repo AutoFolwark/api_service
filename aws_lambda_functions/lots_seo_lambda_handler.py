@@ -23,11 +23,16 @@ from request_schemas.db_save_schemas import DBCurrentDeleteIn, DBCurrentUpdateIn
 PAGE_SIZE = 1000
 MAX_IN_FLIGHT_PAGES = 6
 SQLITE_MAX_BIND_PARAMETERS = 900
+# The update feed rejects a date_from older than 3 days. Three calendar days
+# back is already past that limit once the API reads it as midnight.
+UPDATED_LOT_LOOKBACK_DAYS = 2
+DELETED_LOT_LOOKBACK_DAYS = 3
 
 
-def _get_date_range() -> tuple[str, str]:
-    date_from = (datetime.now(tz=timezone.utc) - timedelta(days=3)).strftime("%Y-%m-%d")
-    date_to = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+def _get_date_range(lookback_days: int, now: datetime | None = None) -> tuple[str, str]:
+    current = now or datetime.now(tz=timezone.utc)
+    date_from = (current - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+    date_to = current.strftime("%Y-%m-%d")
     return date_from, date_to
 
 
@@ -148,15 +153,22 @@ async def _fetch_all_updated_lots(
 
 
 async def _async_lambda_handler() -> dict:
-    date_from, date_to = _get_date_range()
-    logger.info("Starting lot sync for {} through {}", date_from, date_to)
+    deleted_from, deleted_to = _get_date_range(DELETED_LOT_LOOKBACK_DAYS)
+    updated_from, updated_to = _get_date_range(UPDATED_LOT_LOOKBACK_DAYS)
+    logger.info(
+        "Starting lot sync; deleted lots {} through {}, updated lots {} through {}",
+        deleted_from,
+        deleted_to,
+        updated_from,
+        updated_to,
+    )
     save_engine = create_save_engine()
     try:
         async with httpx.AsyncClient(timeout=60.0) as http_client:
             api = AuctionApiClient()
             api._http_client = http_client
 
-            deleted_lots = await _fetch_deleted_lots(api, date_from, date_to)
+            deleted_lots = await _fetch_deleted_lots(api, deleted_from, deleted_to)
             deleted_keys, marked_count = await _mark_deleted_lots(deleted_lots)
             logger.info(
                 "Processed {} deleted-lot records; marked {} saved lots as deleted",
@@ -166,7 +178,7 @@ async def _async_lambda_handler() -> dict:
             del deleted_lots
 
             fetched_count, saved_count = await _fetch_all_updated_lots(
-                api, date_from, date_to, deleted_keys, save_engine
+                api, updated_from, updated_to, deleted_keys, save_engine
             )
             logger.info(
                 "Lot sync complete: {} updated lots fetched, {} saved, {} deleted keys tracked",

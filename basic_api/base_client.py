@@ -69,7 +69,7 @@ class BaseClient(ABC):
                     detail = self._request_failure_detail(
                         method, url, attempt, kwargs, exc=exc, retrying=False
                     )
-                    logger.error(detail)
+                    logger.error("{}", detail)
                     raise BadRequestProblem(detail=detail) from exc
 
                 if response.is_server_error and attempt < REQUEST_ATTEMPTS:
@@ -81,7 +81,7 @@ class BaseClient(ABC):
                         response=response,
                         retrying=True,
                     )
-                    logger.warning(detail)
+                    logger.warning("{}", detail)
                     await response.aclose()
                     await asyncio.sleep(REQUEST_RETRY_DELAY_SECONDS * attempt)
                     continue
@@ -104,9 +104,9 @@ class BaseClient(ABC):
             method, url, attempt, kwargs, exc=exc, retrying=retrying
         )
         if not retrying:
-            logger.error(detail)
+            logger.error("{}", detail)
             raise BadRequestProblem(detail=detail) from exc
-        logger.warning(detail)
+        logger.warning("{}", detail)
         await asyncio.sleep(REQUEST_RETRY_DELAY_SECONDS * attempt)
 
     def _request_failure_detail(
@@ -150,7 +150,7 @@ class BaseClient(ABC):
             if normalized in {SiteEnum.ALL_NUM, SiteEnum.ALL}:
                 payload["site"] = [1, 2]
 
-        logger.debug(f"Request payload: {truncate_log_value(payload)}, url: {url}")
+        logger.debug("Request payload: {}, url: {}", truncate_log_value(payload), url)
 
         if schema.method == "GET":
             response = await self._make_request(
@@ -159,7 +159,7 @@ class BaseClient(ABC):
         elif schema.method == "POST":
             response = await self._make_request("POST", url, json=payload)
         else:
-            logger.error(f"Unsupported method: {schema.method}")
+            logger.error("Unsupported method: {}", schema.method)
             raise ValueError(f"Unsupported method: {schema.method}")
 
         response_data = self._safe_json(response)
@@ -180,9 +180,12 @@ class BaseClient(ABC):
                 :MAX_ERROR_BODY_LOG_CHARS
             ].decode("utf-8", errors="replace")
             logger.warning(
-                f"Request to API returned status {response.status_code} for {url}; "
-                f"content-type={response.headers.get('content-type', '')!r}; "
-                f"body={response_preview!r}",
+                "Request to API returned status {} for {}; "
+                "content-type={!r}; body={!r}",
+                response.status_code,
+                url,
+                response.headers.get("content-type", ""),
+                response_preview,
                 extra={
                     "data": {
                         "url": url,
