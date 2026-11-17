@@ -1,12 +1,11 @@
 import asyncio
+import gzip
 import io
-import re
 import time
 from collections.abc import AsyncIterator, Awaitable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import IO, Any
-from urllib.parse import quote
 from xml.sax.saxutils import escape
 
 import boto3
@@ -16,9 +15,11 @@ from sqlalchemy import Row, select
 from config import settings
 from database.db.session import AsyncSessionLocal, engine_async
 from database.models.saved_lots import SavedLots
+from services.lot_urls import lot_path
 
-LANGUAGES = ("en", "pl", "uk", "cs", "de")
 MAX_URLS_PER_SITEMAP = 50_000
+# Google's limit is 50MB uncompressed. Roll over early so the closing tag fits.
+MAX_UNCOMPRESSED_BYTES = 45 * 1024 * 1024
 FETCH_BATCH = 20_000
 
 STATIC_SITEMAP_FOLDER = "static_sitemaps/"
@@ -31,9 +32,9 @@ PROGRESS_LOG_EVERY = 100_000
 SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
 XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 XML_CONTENT_TYPE = "application/xml"
-
-_WHITESPACE = re.compile(r"\s+")
-_REPEATED_HYPHENS = re.compile(r"-{2,}")
+GZIP_CONTENT_TYPE = "application/gzip"
+URLSET_HEADER = f'{XML_DECLARATION}<urlset xmlns="{SITEMAP_NS}">\n'.encode("utf-8")
+URLSET_FOOTER = b"</urlset>\n"
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -43,33 +44,14 @@ def _as_utc(value: datetime) -> datetime:
 
 
 def _w3c_datetime(value: datetime) -> str:
-    return _as_utc(value).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    return _as_utc(value).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _path_segment(value: str) -> str:
-    return quote(value, safe="-")
-
-
-def _lot_slug(row: Row) -> str:
-    parts = (
-        str(part).strip()
-        for part in (row.year, row.make, row.model, row.vin)
-        if part is not None
-    )
-    slug = "-".join(part for part in parts if part)
-    slug = _WHITESPACE.sub("-", slug)
-    slug = _REPEATED_HYPHENS.sub("-", slug).strip("-")
-    return _path_segment(slug)
-
-
-def _lot_path(row: Row) -> str:
-    base_site = _path_segment(row.base_site.strip().lower())
-    lot_id = _path_segment(str(row.lot_id).strip())
-    path = f"/lot/{base_site}/{lot_id}"
-    slug = _lot_slug(row)
-    if slug:
-        path = f"{path}/{slug}"
-    return escape(path)
+def _effective_lastmod(value: datetime | None, now: datetime) -> datetime | None:
+    if value is None:
+        return None
+    utc = _as_utc(value)
+    return now if utc > now else utc
 
 
 def _sitemap_key(name: str) -> str:
@@ -88,6 +70,7 @@ async def _stream_lot_batches() -> AsyncIterator[Sequence[Row]]:
     statement = (
         select(
             SavedLots.base_site,
+            SavedLots.site,
             SavedLots.lot_id,
             SavedLots.year,
             SavedLots.make,
@@ -95,10 +78,7 @@ async def _stream_lot_batches() -> AsyncIterator[Sequence[Row]]:
             SavedLots.vin,
             SavedLots.updated_at,
         )
-        .where(
-            SavedLots.is_deleted.is_(False),
-            SavedLots.base_site.is_not(None),
-        )
+        .where(SavedLots.is_deleted.is_(False))
         .execution_options(yield_per=FETCH_BATCH)
     )
     async with AsyncSessionLocal() as session:
@@ -113,25 +93,41 @@ class SitemapChunk:
     data: io.BytesIO | None
     url_count: int = 0
     size: int = 0
+    uncompressed_size: int = 0
     lastmod: datetime | None = None
 
 
 class SitemapChunkWriter:
-    def __init__(self, lang: str):
+    def __init__(
+        self,
+        lang: str,
+        max_urls: int = MAX_URLS_PER_SITEMAP,
+        max_bytes: int = MAX_UNCOMPRESSED_BYTES,
+    ):
         self.lang = lang
+        self.max_urls = max_urls
+        self.max_bytes = max_bytes
         self.chunks: list[SitemapChunk] = []
         self._current: SitemapChunk | None = None
+        self._gzip: gzip.GzipFile | None = None
 
     def add(self, entry: bytes, lastmod: datetime | None) -> SitemapChunk | None:
         """Returns the previous chunk once it is full and ready to upload."""
         finished = None
         chunk = self._current
-        if chunk is None or chunk.url_count >= MAX_URLS_PER_SITEMAP:
+        if chunk is not None and (
+            chunk.url_count >= self.max_urls
+            or chunk.uncompressed_size + len(entry) > self.max_bytes
+        ):
             finished = self._close_current()
+            chunk = None
+        if chunk is None:
             chunk = self._open_next()
 
-        chunk.data.write(entry)
+        assert self._gzip is not None
+        self._gzip.write(entry)
         chunk.url_count += 1
+        chunk.uncompressed_size += len(entry)
         if lastmod is not None and (chunk.lastmod is None or lastmod > chunk.lastmod):
             chunk.lastmod = lastmod
         return finished
@@ -140,23 +136,34 @@ class SitemapChunkWriter:
         return self._close_current()
 
     def _open_next(self) -> SitemapChunk:
-        name = f"sitemap-lots-{self.lang}-{len(self.chunks) + 1}.xml"
+        name = f"sitemap-lots-{self.lang}-{len(self.chunks) + 1}.xml.gz"
         data = io.BytesIO()
-        data.write(f'{XML_DECLARATION}<urlset xmlns="{SITEMAP_NS}">\n'.encode("utf-8"))
-        chunk = SitemapChunk(name=name, data=data)
+        self._gzip = gzip.GzipFile(fileobj=data, mode="wb", mtime=0)
+        self._gzip.write(URLSET_HEADER)
+        chunk = SitemapChunk(name=name, data=data, uncompressed_size=len(URLSET_HEADER))
         self._current = chunk
         self.chunks.append(chunk)
         return chunk
 
     def _close_current(self) -> SitemapChunk | None:
         chunk = self._current
-        if chunk is None:
+        data = None if chunk is None else chunk.data
+        if chunk is None or data is None or self._gzip is None:
             return None
-        chunk.data.write(b"</urlset>\n")
-        chunk.size = chunk.data.tell()
-        chunk.data.seek(0)
+        self._gzip.write(URLSET_FOOTER)
+        chunk.uncompressed_size += len(URLSET_FOOTER)
+        self._gzip.close()
+        self._gzip = None
+        chunk.size = data.tell()
+        data.seek(0)
         self._current = None
         return chunk
+
+
+def _content_type(name: str) -> str:
+    if name.endswith(".gz"):
+        return GZIP_CONTENT_TYPE
+    return XML_CONTENT_TYPE
 
 
 def _upload_fileobj(s3: Any, name: str, fileobj: IO[bytes]) -> None:
@@ -164,7 +171,7 @@ def _upload_fileobj(s3: Any, name: str, fileobj: IO[bytes]) -> None:
         fileobj,
         settings.SITEMAP_BUCKET,
         _sitemap_key(name),
-        ExtraArgs={"ContentType": XML_CONTENT_TYPE},
+        ExtraArgs={"ContentType": _content_type(name)},
     )
 
 
@@ -232,27 +239,50 @@ class BuildTimings:
         )
 
 
+def _lot_entry(row: Row, now: datetime) -> tuple[str, datetime | None] | None:
+    path = lot_path(
+        lot_id=row.lot_id,
+        base_site=row.base_site,
+        site=row.site,
+        year=row.year,
+        make=row.make,
+        model=row.model,
+        vin=row.vin,
+    )
+    if path is None:
+        return None
+    lastmod = _effective_lastmod(row.updated_at, now)
+    entry = f"{escape(path)}</loc>"
+    if lastmod is not None:
+        entry += f"<lastmod>{_w3c_datetime(lastmod)}</lastmod>"
+    return entry, lastmod
+
+
 async def _build_and_upload_lot_sitemaps(
     uploader: ChunkUploader,
-) -> tuple[list[SitemapChunk], int]:
-    writers = {lang: SitemapChunkWriter(lang) for lang in LANGUAGES}
+) -> tuple[list[SitemapChunk], int, int]:
+    languages = settings.SITEMAP_LANGUAGES
+    writers = {lang: SitemapChunkWriter(lang) for lang in languages}
     site_url = escape(settings.SITE_URL.rstrip("/"))
     loc_prefixes = {
-        lang: f"<url><loc>{site_url}/{lang}".encode("utf-8") for lang in LANGUAGES
+        lang: f"<url><loc>{site_url}/{lang}".encode("utf-8") for lang in languages
     }
 
     timings = BuildTimings()
+    generated_at = datetime.now(timezone.utc)
     lot_count = 0
+    skipped_count = 0
     next_progress_log = PROGRESS_LOG_EVERY
     waiting_since = time.perf_counter()
     async for batch in _stream_lot_batches():
         timings.db_seconds += time.perf_counter() - waiting_since
 
         for row in batch:
-            lastmod = _as_utc(row.updated_at) if row.updated_at is not None else None
-            entry_tail = f"{_lot_path(row)}</loc>"
-            if lastmod is not None:
-                entry_tail += f"<lastmod>{_w3c_datetime(lastmod)}</lastmod>"
+            built = _lot_entry(row, generated_at)
+            if built is None:
+                skipped_count += 1
+                continue
+            entry_tail, lastmod = built
             entry_tail_bytes = f"{entry_tail}</url>\n".encode("utf-8")
 
             for lang, writer in writers.items():
@@ -274,7 +304,7 @@ async def _build_and_upload_lot_sitemaps(
     timings.log_progress(lot_count, len(uploader.uploaded), final=True)
 
     chunks = [chunk for writer in writers.values() for chunk in writer.chunks]
-    return chunks, lot_count
+    return chunks, lot_count, skipped_count
 
 
 def _build_index(
@@ -345,17 +375,20 @@ async def _async_lambda_handler() -> dict:
     uploader = ChunkUploader(s3)
 
     try:
-        chunks, lot_count = await _build_and_upload_lot_sitemaps(uploader)
+        chunks, lot_count, skipped_count = await _build_and_upload_lot_sitemaps(
+            uploader
+        )
     except BaseException:
         await uploader.abort()
         raise
 
     url_count = sum(chunk.url_count for chunk in chunks)
     logger.info(
-        "Uploaded {} lot sitemaps with {} URLs for {} lots ({:.1f} MB)",
+        "Uploaded {} lot sitemaps with {} URLs for {} lots ({} skipped, {:.1f} MB)",
         len(chunks),
         url_count,
         lot_count,
+        skipped_count,
         _mb(sum(chunk.size for chunk in chunks)),
     )
 
