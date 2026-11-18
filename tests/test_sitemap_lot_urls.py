@@ -1,23 +1,19 @@
 import gzip
 from datetime import datetime, timezone
-from email.utils import format_datetime
 from types import SimpleNamespace
 
-from botocore.exceptions import ClientError
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from fastapi_problem.handler import add_exception_handler, new_exception_handler
-
 from aws_lambda_functions.sitemap_generator_lambda_handler import (
+    INDEX_NAME,
     URLSET_FOOTER,
+    SitemapChunk,
     SitemapChunkWriter,
+    _build_index,
     _content_type,
     _effective_lastmod,
     _lot_entry,
     _w3c_datetime,
 )
 from config import settings
-from routers.v1 import sitemaps
 from services.lot_urls import lot_path, lot_slug
 
 
@@ -125,7 +121,7 @@ def test_chunk_rolls_over_on_url_count_and_stays_valid_gzip():
         "sitemap-lots-en-2.xml.gz",
     ]
     assert _content_type(finished.name) == "application/gzip"
-    assert _content_type("sitemap-index.xml") == "application/xml"
+    assert _content_type("sitemap.xml") == "application/xml"
 
 
 def test_chunk_rolls_over_on_uncompressed_size():
@@ -145,118 +141,20 @@ def test_chunk_rolls_over_on_uncompressed_size():
     assert len(writer.chunks) == 2
 
 
-class _Body:
-    def __init__(self, data: bytes):
-        self._data = data
-        self.closed = False
-
-    def iter_chunks(self, chunk_size: int = 1024):
-        for start in range(0, len(self._data), chunk_size):
-            yield self._data[start : start + chunk_size]
-
-    def close(self):
-        self.closed = True
-
-
-class _S3:
-    def __init__(self, objects: dict):
-        self.objects = objects
-        self.gets: list[str] = []
-
-    def head_object(self, Bucket, Key):
-        assert Bucket == settings.SITEMAP_BUCKET
-        if Key not in self.objects:
-            raise ClientError(
-                {"Error": {"Code": "NoSuchKey", "Message": "missing"}}, "HeadObject"
-            )
-        item = self.objects[Key]
-        return {
-            "ETag": item["etag"],
-            "LastModified": item["last_modified"],
-            "ContentLength": len(item["body"]),
-        }
-
-    def get_object(self, Bucket, Key):
-        self.gets.append(Key)
-        item = self.objects[Key]
-        return {"Body": _Body(item["body"])}
-
-
-def _client(store: _S3, monkeypatch) -> TestClient:
-    monkeypatch.setattr(sitemaps, "_s3_client", lambda: store)
-    app = FastAPI()
-    add_exception_handler(app, new_exception_handler())
-    app.include_router(sitemaps.sitemaps_router, prefix="/public/v1/sitemaps")
-    return TestClient(app)
-
-
-def test_sitemap_route_streams_the_object_from_the_site(monkeypatch):
-    modified = datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc)
-    body = b"<sitemapindex></sitemapindex>"
-    store = _S3(
-        {
-            f"{settings.SITEMAP_PREFIX}sitemap-index.xml": {
-                "etag": '"abc"',
-                "last_modified": modified,
-                "body": body,
-            }
-        }
+def test_index_links_use_the_site_root():
+    chunk = SitemapChunk(
+        name="sitemap-lots-en-1.xml.gz",
+        data=None,
+        url_count=1,
+        lastmod=datetime(2026, 1, 15, tzinfo=timezone.utc),
     )
 
-    response = _client(store, monkeypatch).get("/public/v1/sitemaps/sitemap-index.xml")
-
-    assert response.status_code == 200
-    assert response.content == body
-    assert response.headers["content-type"].startswith("application/xml")
-    assert response.headers["etag"] == '"abc"'
-    assert response.headers["last-modified"] == format_datetime(modified, usegmt=True)
-    assert response.headers["cache-control"] == "public, max-age=3600"
-    assert store.gets == [f"{settings.SITEMAP_PREFIX}sitemap-index.xml"]
-
-
-def test_sitemap_route_returns_304_without_downloading_the_body(monkeypatch):
-    modified = datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc)
-    key = f"{settings.SITEMAP_PREFIX}sitemap-lots-en-1.xml.gz"
-    store = _S3(
-        {key: {"etag": '"abc"', "last_modified": modified, "body": b"gzip-bytes"}}
+    index = (
+        _build_index([chunk], [("static_sitemaps/pages.xml", None)]).getvalue().decode()
     )
-    client = _client(store, monkeypatch)
 
-    not_modified = client.get(
-        "/public/v1/sitemaps/sitemap-lots-en-1.xml.gz",
-        headers={"If-None-Match": 'W/"abc"'},
-    )
-    assert not_modified.status_code == 304
-    assert not_modified.content == b""
-    assert store.gets == []
-
-    stale_validator = client.get(
-        "/public/v1/sitemaps/sitemap-lots-en-1.xml.gz",
-        headers={
-            "If-None-Match": '"other"',
-            "If-Modified-Since": format_datetime(modified, usegmt=True),
-        },
-    )
-    assert stale_validator.status_code == 200
-    assert stale_validator.headers["content-type"].startswith("application/gzip")
-    assert stale_validator.content == b"gzip-bytes"
-
-    fresh = client.get(
-        "/public/v1/sitemaps/sitemap-lots-en-1.xml.gz",
-        headers={"If-Modified-Since": format_datetime(modified, usegmt=True)},
-    )
-    assert fresh.status_code == 304
-    assert store.gets == [key]
-
-
-def test_sitemap_route_404s_for_missing_or_invalid_paths(monkeypatch):
-    store = _S3({})
-    client = _client(store, monkeypatch)
-
-    missing = client.get("/public/v1/sitemaps/sitemap-index.xml")
-    invalid = client.get("/public/v1/sitemaps/not-a-sitemap.txt")
-
-    assert missing.status_code == 404
-    assert invalid.status_code == 404
-    assert store.gets == []
-    assert sitemaps._is_valid_sitemap_path("static_sitemaps/../secret.xml") is False
+    site = settings.SITE_URL.rstrip("/")
+    assert INDEX_NAME == "sitemap.xml"
+    assert f"<loc>{site}/sitemap-lots-en-1.xml.gz</loc>" in index
+    assert f"<loc>{site}/static_sitemaps/pages.xml</loc>" in index
+    assert "/sitemaps/" not in index
