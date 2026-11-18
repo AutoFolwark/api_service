@@ -55,8 +55,6 @@ class Settings(BaseSettings):
     SITEMAP_BUCKET: str = "files-production-307181770546-eu-central-1-an"
     SITEMAP_BUCKET_REGION: str = "eu-central-1"
     SITEMAP_PREFIX: str = "sitemaps/"
-    # Traefik routes bidmax.eu/sitemaps/* to /public/v1/sitemaps/*; the generated index links child sitemaps here.
-    SITEMAP_PUBLIC_BASE_URL: str = "https://bidmax.eu/sitemaps"
     # Keep aligned with frontend/constants/languages.js.
     SITEMAP_LANGUAGES: tuple[str, ...] = ("en", "pl", "uk", "cs", "de", "sl")
 
