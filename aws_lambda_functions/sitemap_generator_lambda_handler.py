@@ -1,5 +1,4 @@
 import asyncio
-import gzip
 import io
 import time
 from collections.abc import AsyncIterator, Awaitable, Iterable, Sequence
@@ -110,7 +109,6 @@ class SitemapChunkWriter:
         self.max_bytes = max_bytes
         self.chunks: list[SitemapChunk] = []
         self._current: SitemapChunk | None = None
-        self._gzip: gzip.GzipFile | None = None
 
     def add(self, entry: bytes, lastmod: datetime | None) -> SitemapChunk | None:
         """Returns the previous chunk once it is full and ready to upload."""
@@ -125,8 +123,8 @@ class SitemapChunkWriter:
         if chunk is None:
             chunk = self._open_next()
 
-        assert self._gzip is not None
-        self._gzip.write(entry)
+        assert chunk.data is not None
+        chunk.data.write(entry)
         chunk.url_count += 1
         chunk.uncompressed_size += len(entry)
         if lastmod is not None and (chunk.lastmod is None or lastmod > chunk.lastmod):
@@ -137,10 +135,9 @@ class SitemapChunkWriter:
         return self._close_current()
 
     def _open_next(self) -> SitemapChunk:
-        name = f"sitemap-lots-{self.lang}-{len(self.chunks) + 1}.xml.gz"
+        name = f"sitemap-lots-{self.lang}-{len(self.chunks) + 1}.xml"
         data = io.BytesIO()
-        self._gzip = gzip.GzipFile(fileobj=data, mode="wb", mtime=0)
-        self._gzip.write(URLSET_HEADER)
+        data.write(URLSET_HEADER)
         chunk = SitemapChunk(name=name, data=data, uncompressed_size=len(URLSET_HEADER))
         self._current = chunk
         self.chunks.append(chunk)
@@ -149,12 +146,10 @@ class SitemapChunkWriter:
     def _close_current(self) -> SitemapChunk | None:
         chunk = self._current
         data = None if chunk is None else chunk.data
-        if chunk is None or data is None or self._gzip is None:
+        if chunk is None or data is None:
             return None
-        self._gzip.write(URLSET_FOOTER)
+        data.write(URLSET_FOOTER)
         chunk.uncompressed_size += len(URLSET_FOOTER)
-        self._gzip.close()
-        self._gzip = None
         chunk.size = data.tell()
         data.seek(0)
         self._current = None

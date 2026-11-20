@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
+from typing import get_args
 
 from fastapi import APIRouter, Depends, Query
 from fastapi_cache import default_key_builder
 from fastapi_cache.decorator import cache
-from pydantic import ValidationError
+from pydantic import HttpUrl, ValidationError
+from rfc9457 import NotFoundProblem
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +31,40 @@ _SAVED_LOT_RESPONSE_FIELDS = frozenset(BasicLot.model_fields) & {
 }
 
 
+def _uses_http_url(annotation: object) -> bool:
+    if annotation is HttpUrl:
+        return True
+    return any(_uses_http_url(arg) for arg in get_args(annotation))
+
+
+_HTTP_URL_FIELDS = frozenset(
+    name
+    for name, field in BasicLot.model_fields.items()
+    if name in _SAVED_LOT_RESPONSE_FIELDS and _uses_http_url(field.annotation)
+)
+
+
+def saved_lot_to_basic(row: object) -> BasicLot | None:
+    payload = {name: getattr(row, name, None) for name in _SAVED_LOT_RESPONSE_FIELDS}
+    try:
+        return BasicLot.model_validate(payload)
+    except ValidationError as exc:
+        for name in _HTTP_URL_FIELDS:
+            payload[name] = None
+        logger.warning(
+            "Dropped invalid URLs while mapping saved lot",
+            extra={"lot_id": payload.get("lot_id"), "error": str(exc)},
+        )
+    try:
+        return BasicLot.model_validate(payload)
+    except ValidationError:
+        logger.exception(
+            "Failed to map saved lot to BasicLot",
+            extra={"lot_id": payload.get("lot_id")},
+        )
+        return None
+
+
 async def _get_lots_from_db(
     db: AsyncSession,
     site: DefinedSiteEnum | None,
@@ -49,13 +85,12 @@ async def _get_lots_from_db(
     rows = (await db.execute(statement)).scalars().all()
     if not rows:
         return None
-    try:
-        lots = [BasicLot.model_validate(row) for row in rows]
-    except (ValidationError, ValueError):
-        logger.exception(
-            "Failed to map saved lot to BasicLot", extra={"vin_or_lot": vin_or_lot}
-        )
-        return None
+    lots = []
+    for row in rows:
+        lot = saved_lot_to_basic(row)
+        if lot is not None:
+            lots.append(lot)
+    # An empty list means the rows exist but none mapped. That is not a cache miss.
     return lots[0] if len(lots) == 1 else lots
 
 
@@ -80,6 +115,8 @@ async def get_by_lot_id_or_vin(
     vin_or_lot = data.vin_or_lot.replace(" ", "").upper()
     lots = await _get_lots_from_db(db, data.site, vin_or_lot)
     if lots is not None:
+        if not lots:
+            raise NotFoundProblem("Lot not found")
         return translate_lot_response(lots, locale)
 
     logger.debug(

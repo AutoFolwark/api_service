@@ -1,4 +1,3 @@
-import gzip
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -96,7 +95,7 @@ def test_future_lastmod_is_clamped_to_generation_time():
     assert _effective_lastmod(None, now) is None
 
 
-def test_chunk_rolls_over_on_url_count_and_stays_valid_gzip():
+def test_chunk_rolls_over_on_url_count_and_stays_valid_xml():
     entry = b"<url><loc>https://bidmax.eu/en/lot/copart/1/lot</loc></url>\n"
     writer = SitemapChunkWriter("en", max_urls=2, max_bytes=10**9)
     assert writer.add(entry, None) is None
@@ -106,8 +105,8 @@ def test_chunk_rolls_over_on_url_count_and_stays_valid_gzip():
     assert finished is not None
     assert finished.url_count == 2
     assert finished.lastmod == datetime(2024, 1, 1, tzinfo=timezone.utc)
-    assert finished.name == "sitemap-lots-en-1.xml.gz"
-    xml = gzip.decompress(finished.data.read())
+    assert finished.name == "sitemap-lots-en-1.xml"
+    xml = finished.data.read()
     assert xml.startswith(b"<?xml")
     assert xml.count(b"<url>") == 2
     assert xml.endswith(URLSET_FOOTER)
@@ -117,10 +116,10 @@ def test_chunk_rolls_over_on_url_count_and_stays_valid_gzip():
     assert last.url_count == 1
     assert last.lastmod == datetime(2024, 6, 1, tzinfo=timezone.utc)
     assert [chunk.name for chunk in writer.chunks] == [
-        "sitemap-lots-en-1.xml.gz",
-        "sitemap-lots-en-2.xml.gz",
+        "sitemap-lots-en-1.xml",
+        "sitemap-lots-en-2.xml",
     ]
-    assert _content_type(finished.name) == "application/gzip"
+    assert _content_type(finished.name) == "application/xml"
     assert _content_type("sitemap.xml") == "application/xml"
 
 
@@ -143,7 +142,7 @@ def test_chunk_rolls_over_on_uncompressed_size():
 
 def test_index_links_use_the_site_root():
     chunk = SitemapChunk(
-        name="sitemap-lots-en-1.xml.gz",
+        name="sitemap-lots-en-1.xml",
         data=None,
         url_count=1,
         lastmod=datetime(2026, 1, 15, tzinfo=timezone.utc),
@@ -155,6 +154,6 @@ def test_index_links_use_the_site_root():
 
     site = settings.SITE_URL.rstrip("/")
     assert INDEX_NAME == "sitemap.xml"
-    assert f"<loc>{site}/sitemap-lots-en-1.xml.gz</loc>" in index
+    assert f"<loc>{site}/sitemap-lots-en-1.xml</loc>" in index
     assert f"<loc>{site}/static_sitemaps/pages.xml</loc>" in index
     assert "/sitemaps/" not in index
